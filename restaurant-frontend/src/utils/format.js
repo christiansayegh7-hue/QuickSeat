@@ -28,6 +28,20 @@ export function restaurantImage(id, variant = 0) {
   return `https://picsum.photos/seed/olive-restaurant-${id}-${variant}/800/600`
 }
 
+// Prefers the real cover image an admin uploaded; only variant 0 can ever
+// have a real photo since restaurants only have a single cover image today.
+export function restaurantCoverUrl(restaurant, variant = 0) {
+  if (variant === 0 && restaurant?.cover_image_url) return restaurant.cover_image_url
+  return restaurantImage(restaurant.id, variant)
+}
+
+// Prefers the real photo an admin uploaded for a menu item; falls back to a
+// placeholder (keyed by id) for older/seeded items that have none yet.
+export function menuItemImageUrl(item) {
+  if (item?.image_url) return item.image_url
+  return `https://picsum.photos/seed/menu-item-${item?.id ?? 'x'}/400/300`
+}
+
 export function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)

@@ -19,7 +19,15 @@ class Restaurant extends Model
         'price_range',
         'opening_hours',
         'description',
+        'cover_image',
     ];
+
+    protected $appends = ['cover_image_url'];
+
+    public function getCoverImageUrlAttribute(): ?string
+    {
+        return $this->cover_image ? asset('storage/' . $this->cover_image) : null;
+    }
 
     public function manager()
     {

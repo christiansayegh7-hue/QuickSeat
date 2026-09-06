@@ -19,21 +19,20 @@ export default function MyBookings() {
 
   function fetchReservations() {
     return api
-      .get('/reservations/my', { params: { user_id: user.id } })
+      .get('/reservations/my')
       .then(({ data }) => setReservations(data.reservations || []))
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     if (user) fetchReservations()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   async function cancelReservation(id) {
     setError('')
     setCancellingId(id)
     try {
-      await api.patch(`/reservations/${id}/cancel`, { user_id: user.id })
+      await api.patch(`/reservations/${id}/cancel`)
       reload()
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not cancel this reservation.'))

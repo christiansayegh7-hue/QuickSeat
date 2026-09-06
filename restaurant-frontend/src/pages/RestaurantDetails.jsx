@@ -5,9 +5,9 @@ import api, { apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/ui/StarRating'
 import Badge from '../components/ui/Badge'
-import { averageRating, formatCurrency, ratingBreakdown, restaurantImage } from '../utils/format'
+import { averageRating, formatCurrency, menuItemImageUrl, ratingBreakdown, restaurantCoverUrl } from '../utils/format'
 
-const TABS = ['Overview', 'Menu', 'Reviews', 'Photos']
+const TABS = ['Overview', 'Menu', 'Reviews']
 
 export default function RestaurantDetails() {
   const { id } = useParams()
@@ -98,17 +98,7 @@ export default function RestaurantDetails() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <div className="overflow-hidden rounded-2xl">
-            <img src={restaurantImage(restaurant.id, 0)} alt={restaurant.name} className="h-72 w-full object-cover sm:h-96" />
-          </div>
-          <div className="mt-3 grid grid-cols-4 gap-3">
-            {[1, 2, 3, 4].map((v) => (
-              <img
-                key={v}
-                src={restaurantImage(restaurant.id, v)}
-                alt=""
-                className="h-20 w-full rounded-xl object-cover"
-              />
-            ))}
+            <img src={restaurantCoverUrl(restaurant)} alt={restaurant.name} className="h-72 w-full object-cover sm:h-96" />
           </div>
         </div>
 
@@ -178,7 +168,7 @@ export default function RestaurantDetails() {
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {menuItems.slice(0, 4).map((item) => (
                   <div key={item.id} className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-olive-100">
-                    <img src={item.image} alt={item.name} className="h-24 w-full object-cover" />
+                    <img src={menuItemImageUrl(item)} alt={item.name} className="h-24 w-full object-cover" />
                     <div className="p-2">
                       <p className="truncate text-xs font-semibold text-olive-900">{item.name}</p>
                       <p className="text-xs text-olive-600">{formatCurrency(item.price)}</p>
@@ -221,7 +211,7 @@ export default function RestaurantDetails() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {(category.menuItems || []).map((item) => (
                     <div key={item.id} className="flex gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-olive-100">
-                      <img src={item.image} alt={item.name} className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+                      <img src={menuItemImageUrl(item)} alt={item.name} className="h-20 w-20 shrink-0 rounded-lg object-cover" />
                       <div>
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-semibold text-olive-950">{item.name}</p>
@@ -300,19 +290,6 @@ export default function RestaurantDetails() {
                 </form>
               )}
             </div>
-          </div>
-        )}
-
-        {tab === 'Photos' && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <img
-                key={i}
-                src={restaurantImage(restaurant.id, i)}
-                alt=""
-                className="h-40 w-full rounded-xl object-cover"
-              />
-            ))}
           </div>
         )}
       </div>

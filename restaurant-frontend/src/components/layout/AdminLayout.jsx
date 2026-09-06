@@ -4,6 +4,7 @@ import {
   BarChart3,
   Bell,
   CalendarCheck,
+  Compass,
   DollarSign,
   LayoutDashboard,
   Leaf,
@@ -18,6 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationsContext'
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -28,12 +30,14 @@ const links = [
   { to: '/admin/reviews', label: 'Reviews', icon: MessageSquare },
   { to: '/admin/profits', label: 'Profits', icon: DollarSign },
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/admin/notifications', label: 'Notifications', icon: Bell },
+  { to: '/admin/notifications', label: 'Notifications', icon: Bell, badge: true },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
+  { to: '/', label: 'Explore', icon: Compass, end: true },
 ]
 
 function SidebarContent({ onNavigate }) {
   const { logout } = useAuth()
+  const { unreadCount } = useNotifications()
   const navigate = useNavigate()
 
   async function handleLogout() {
@@ -54,7 +58,7 @@ function SidebarContent({ onNavigate }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {links.map(({ to, label, icon: Icon, end }) => (
+        {links.map(({ to, label, icon: Icon, end, badge }) => (
           <NavLink
             key={to}
             to={to}
@@ -68,6 +72,11 @@ function SidebarContent({ onNavigate }) {
           >
             <Icon size={18} />
             {label}
+            {badge && unreadCount > 0 && (
+              <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

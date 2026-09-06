@@ -36,7 +36,7 @@ export default function AdminReservations() {
     setError('')
     setBusyId(r.id)
     try {
-      await api.patch(`/reservations/${r.id}/cancel`, { user_id: r.user_id })
+      await api.patch(`/reservations/${r.id}/cancel`)
       reload()
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not cancel this reservation.'))

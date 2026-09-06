@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
+
+        // This app has no server-rendered login page (the React frontend
+        // owns auth) - so unauthenticated requests always get a 401 JSON
+        // response instead of Laravel trying to redirect to a "login" route
+        // that doesn't exist.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

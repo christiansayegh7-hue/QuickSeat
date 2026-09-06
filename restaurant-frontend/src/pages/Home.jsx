@@ -36,7 +36,9 @@ export default function Home() {
   return (
     <div>
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/olive-hero/1600/900')] bg-cover bg-center" />
+        {/* To change the homepage background photo, replace this file (keep the same name):
+            restaurant-frontend/public/images/home-hero.jpg */}
+        <div className="absolute inset-0 bg-[url('/images/home-hero.jpg')] bg-cover bg-center" />
         <div className="absolute inset-0 bg-gradient-to-r from-olive-950/90 via-olive-950/70 to-olive-950/30" />
         <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-36">
           <h1 className="max-w-xl font-serif text-4xl font-bold leading-tight text-white sm:text-5xl">

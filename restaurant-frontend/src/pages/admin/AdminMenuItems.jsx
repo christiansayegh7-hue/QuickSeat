@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import api, { apiErrorMessage } from '../../lib/api'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, menuItemImageUrl } from '../../utils/format'
 
-const emptyForm = { id: null, category_id: '', name: '', description: '', price: '', image: '', is_available: true }
+const emptyForm = { id: null, category_id: '', name: '', description: '', price: '', is_available: true }
 
 export default function AdminMenuItems() {
   const [restaurants, setRestaurants] = useState([])
@@ -12,6 +12,8 @@ export default function AdminMenuItems() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [form, setForm] = useState(emptyForm)
+  const [imageFile, setImageFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -44,6 +46,8 @@ export default function AdminMenuItems() {
 
   function openCreate() {
     setForm({ ...emptyForm, category_id: categories[0]?.id || '' })
+    setImageFile(null)
+    setPreviewUrl('')
     setShowForm(true)
     setError('')
   }
@@ -55,30 +59,39 @@ export default function AdminMenuItems() {
       name: item.name,
       description: item.description || '',
       price: item.price,
-      image: item.image || '',
       is_available: !!item.is_available,
     })
+    setImageFile(null)
+    setPreviewUrl(menuItemImageUrl(item))
     setShowForm(true)
     setError('')
+  }
+
+  function handleImagePick(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setSaving(true)
     setError('')
-    const payload = {
-      category_id: Number(form.category_id),
-      name: form.name,
-      description: form.description || null,
-      price: Number(form.price),
-      image: form.image || null,
-      is_available: form.is_available,
-    }
+
+    const body = new FormData()
+    body.append('category_id', form.category_id)
+    body.append('name', form.name)
+    body.append('description', form.description || '')
+    body.append('price', form.price)
+    body.append('is_available', form.is_available ? '1' : '0')
+    if (imageFile) body.append('image', imageFile)
+
     try {
       if (form.id) {
-        await api.patch(`/menu-items/${form.id}`, payload)
+        await api.post(`/menu-items/${form.id}`, body, { headers: { 'Content-Type': 'multipart/form-data' } })
       } else {
-        await api.post('/menu-items', payload)
+        await api.post('/menu-items', body, { headers: { 'Content-Type': 'multipart/form-data' } })
       }
       setShowForm(false)
       reloadRestaurant(restaurantId)
@@ -137,7 +150,7 @@ export default function AdminMenuItems() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {(category.menuItems || []).map((item) => (
                   <div key={item.id} className="flex gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-olive-100">
-                    {item.image && <img src={item.image} alt={item.name} className="h-16 w-16 rounded-lg object-cover" />}
+                    <img src={menuItemImageUrl(item)} alt={item.name} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
                     <div className="flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-medium text-olive-950">{item.name}</p>
@@ -169,7 +182,7 @@ export default function AdminMenuItems() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-serif text-lg font-bold text-olive-950">{form.id ? 'Edit Menu Item' : 'Add Menu Item'}</h3>
               <button onClick={() => setShowForm(false)} className="text-olive-500 hover:text-olive-900">
@@ -177,6 +190,20 @@ export default function AdminMenuItems() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <p className="mb-1 text-xs font-medium text-olive-600">Photo</p>
+                <div className="flex items-center gap-4">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="" className="h-16 w-16 rounded-lg object-cover ring-1 ring-olive-100" />
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg bg-olive-50 ring-1 ring-olive-100" />
+                  )}
+                  <label className="flex cursor-pointer items-center gap-2 rounded-full border border-olive-200 px-4 py-2 text-xs font-semibold text-olive-800 hover:bg-olive-50">
+                    <Upload size={14} /> Upload Photo
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
+                  </label>
+                </div>
+              </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-olive-600">Category</label>
                 <select
@@ -207,10 +234,6 @@ export default function AdminMenuItems() {
                   <input id="avail" type="checkbox" checked={form.is_available} onChange={(e) => setForm((f) => ({ ...f, is_available: e.target.checked }))} />
                   <label htmlFor="avail" className="text-sm text-olive-700">Available</label>
                 </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-olive-600">Image URL</label>
-                <input value={form.image} onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))} className="w-full rounded-lg border border-olive-200 px-3 py-2 text-sm" />
               </div>
               <button type="submit" disabled={saving} className="w-full rounded-full bg-olive-800 py-2.5 text-sm font-semibold text-white hover:bg-olive-900 disabled:opacity-60">
                 {saving ? 'Saving...' : 'Save Item'}

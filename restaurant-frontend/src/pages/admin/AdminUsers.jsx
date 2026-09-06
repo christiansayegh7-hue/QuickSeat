@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, Store } from 'lucide-react'
 import api, { apiErrorMessage } from '../../lib/api'
 
 export default function AdminUsers() {
@@ -68,6 +68,17 @@ export default function AdminUsers() {
                       <span className="inline-flex items-center gap-1 rounded-full bg-olive-100 px-2.5 py-1 text-xs font-semibold text-olive-800">
                         <ShieldCheck size={12} /> Admin
                       </span>
+                    ) : u.role === 'restaurant' ? (
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                          <Store size={12} /> Manager / Restaurant
+                        </span>
+                        <p className="text-xs text-olive-500">
+                          {u.managed_restaurants?.length
+                            ? u.managed_restaurants.map((r) => r.name).join(', ')
+                            : 'No restaurant assigned'}
+                        </p>
+                      </div>
                     ) : (
                       <span className="rounded-full bg-olive-50 px-2.5 py-1 text-xs font-semibold text-olive-600">Customer</span>
                     )}

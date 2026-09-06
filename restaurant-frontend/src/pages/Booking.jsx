@@ -57,7 +57,6 @@ export default function Booking() {
     setError('')
     try {
       const { data } = await api.post('/reservations', {
-        user_id: user.id,
         restaurant_id: Number(id),
         table_id: tableId,
         reservation_date: date,

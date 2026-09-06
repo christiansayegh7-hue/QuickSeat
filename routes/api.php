@@ -9,6 +9,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\RestaurantController;
 
 
@@ -18,17 +19,27 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
-Route::post('/reservations', [ReservationController::class, 'store']); 
+// The customer is identified from the Sanctum token on every one of these,
+// never from a client-supplied user_id.
+Route::middleware('auth:sanctum')->group(function () {
 
-Route::get('/reservations', [ReservationController::class, 'index']);
+    Route::post('/reservations', [ReservationController::class, 'store']);
 
-Route::get('/reservations/my', [ReservationController::class, 'myReservations']);
+    Route::get('/reservations/my', [ReservationController::class, 'myReservations']);
 
-Route::patch('/reservations/{id}/cancel', [ReservationController::class, 'cancel']);
+    Route::patch('/reservations/{id}/cancel', [ReservationController::class, 'cancel']);
 
-Route::patch('/reservations/{id}/no-show', [ReservationController::class, 'markNoShow']);
+});
 
-Route::get('/restaurants/{restaurantId}/reservations', [ReservationController::class, 'restaurantReservations']);
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+
+    Route::get('/reservations', [ReservationController::class, 'index']);
+
+    Route::patch('/reservations/{id}/no-show', [ReservationController::class, 'markNoShow']);
+
+    Route::get('/restaurants/{restaurantId}/reservations', [ReservationController::class, 'restaurantReservations']);
+
+});
 
 Route::middleware(['auth:sanctum', 'admin'])->get('/admin/test', function () {
     return response()->json([
@@ -48,6 +59,13 @@ Route::middleware(['auth:sanctum', 'admin'])->post(
 );
 
 Route::middleware(['auth:sanctum', 'admin'])->patch(
+    '/menu-items/{id}',
+    [MenuItemController::class, 'update']
+);
+
+// Same handler as PATCH above, but reachable via POST so a real multipart
+// image upload works reliably (mirrors the restaurant cover photo update).
+Route::middleware(['auth:sanctum', 'admin'])->post(
     '/menu-items/{id}',
     [MenuItemController::class, 'update']
 );
@@ -76,6 +94,8 @@ Route::middleware(['auth:sanctum', 'admin'])->get(
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/notifications', [NotificationController::class, 'index']);
+
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
 
     Route::post('/notifications', [NotificationController::class, 'store']);
 
@@ -113,3 +133,17 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin/reports')->group(fun
 Route::get('/restaurants', [RestaurantController::class, 'index']);
 
 Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);
+
+// POST (not PATCH) so a real multipart image upload works reliably.
+Route::middleware(['auth:sanctum', 'admin'])->post('/admin/restaurants/{id}', [RestaurantController::class, 'update']);
+
+// Single store() branched by role (admin vs restaurant manager) - see CategoryController.
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/categories', [CategoryController::class, 'store']);
+
+    Route::patch('/categories/{id}', [CategoryController::class, 'update']);
+
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+
+});

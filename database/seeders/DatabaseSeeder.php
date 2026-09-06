@@ -52,6 +52,18 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // A restaurant-manager account (role = "restaurant"), so the
+        // CategoryController's manager branch has a real user to log in as.
+        // It is assigned as the manager of La Maison below.
+        $restaurantManager = User::updateOrCreate(
+            ['email' => 'manager@olive.com'],
+            [
+                'name' => 'La Maison Manager',
+                'password' => 'password',
+                'role' => 'restaurant',
+            ]
+        );
+
         $restaurants = [
             [
                 'name' => 'La Maison',
@@ -63,16 +75,30 @@ class DatabaseSeeder extends Seeder
                 'opening_hours' => '11:00 AM - 11:00 PM',
                 'about' => 'La Maison brings the taste of Italy to your table. Enjoy a warm atmosphere, friendly service, and delicious homemade dishes.',
                 'categories' => [
+                    'Starters' => [
+                        ['name' => 'Bruschetta al Pomodoro', 'price' => 7.00, 'description' => 'Toasted bread with tomato, garlic and basil.'],
+                        ['name' => 'Caprese Salad', 'price' => 8.50, 'description' => 'Fresh mozzarella, tomato and basil, olive oil drizzle.'],
+                        ['name' => 'Arancini', 'price' => 7.50, 'description' => 'Crispy risotto balls stuffed with mozzarella.'],
+                    ],
                     'Pizza' => [
                         ['name' => 'Margherita Pizza', 'price' => 12.00, 'description' => 'Classic tomato, mozzarella and basil.'],
                         ['name' => 'Quattro Formaggi', 'price' => 14.50, 'description' => 'Four-cheese blend on a crispy crust.'],
+                        ['name' => 'Pepperoni Pizza', 'price' => 13.50, 'description' => 'Loaded with spicy pepperoni and mozzarella.'],
+                        ['name' => 'Prosciutto e Funghi', 'price' => 15.00, 'description' => 'Ham, mushrooms and mozzarella on a thin crust.'],
                     ],
                     'Pasta' => [
                         ['name' => 'Pasta Alfredo', 'price' => 14.00, 'description' => 'Creamy parmesan sauce with fettuccine.'],
                         ['name' => 'Spaghetti Bolognese', 'price' => 13.50, 'description' => 'Slow cooked beef ragu.'],
+                        ['name' => 'Penne Arrabbiata', 'price' => 12.50, 'description' => 'Spicy tomato sauce with garlic and chili.'],
+                        ['name' => 'Lasagna della Casa', 'price' => 15.50, 'description' => 'Layered pasta with beef ragu and bechamel.'],
                     ],
                     'Dessert' => [
                         ['name' => 'Tiramisu', 'price' => 8.00, 'description' => 'Espresso soaked ladyfingers with mascarpone cream.'],
+                        ['name' => 'Panna Cotta', 'price' => 7.00, 'description' => 'Silky vanilla cream with berry compote.'],
+                    ],
+                    'Drinks' => [
+                        ['name' => 'Italian Soda', 'price' => 4.00, 'description' => 'Sparkling water with fruit syrup.'],
+                        ['name' => 'Espresso', 'price' => 3.00, 'description' => 'Rich and bold Italian espresso.'],
                     ],
                 ],
             ],
@@ -89,9 +115,21 @@ class DatabaseSeeder extends Seeder
                     'Salads' => [
                         ['name' => 'Quinoa Salad', 'price' => 9.50, 'description' => 'Quinoa, cherry tomatoes, cucumber and feta.'],
                         ['name' => 'Avocado Bowl', 'price' => 10.50, 'description' => 'Avocado, chickpeas, greens and tahini dressing.'],
+                        ['name' => 'Kale Caesar Salad', 'price' => 9.00, 'description' => 'Kale, parmesan, croutons, light Caesar dressing.'],
+                        ['name' => 'Roasted Beet Salad', 'price' => 9.50, 'description' => 'Roasted beets, walnuts, goat cheese, arugula.'],
+                    ],
+                    'Bowls' => [
+                        ['name' => 'Grilled Chicken Bowl', 'price' => 11.50, 'description' => 'Grilled chicken, brown rice, greens, tahini sauce.'],
+                        ['name' => 'Falafel Power Bowl', 'price' => 10.00, 'description' => 'Falafel, hummus, greens, pickled vegetables.'],
+                        ['name' => 'Salmon Poke Bowl', 'price' => 13.00, 'description' => 'Fresh salmon, rice, edamame, avocado, sesame.'],
                     ],
                     'Smoothies' => [
                         ['name' => 'Green Detox', 'price' => 6.00, 'description' => 'Spinach, apple, ginger and lemon.'],
+                        ['name' => 'Berry Blast', 'price' => 6.50, 'description' => 'Mixed berries, banana and almond milk.'],
+                        ['name' => 'Tropical Mango', 'price' => 6.50, 'description' => 'Mango, pineapple and coconut water.'],
+                    ],
+                    'Dessert' => [
+                        ['name' => 'Chia Pudding', 'price' => 5.50, 'description' => 'Chia seeds, coconut milk, fresh fruit.'],
                     ],
                 ],
             ],
@@ -107,10 +145,22 @@ class DatabaseSeeder extends Seeder
                 'categories' => [
                     'Starters' => [
                         ['name' => 'Grilled Shrimp Skewers', 'price' => 11.00, 'description' => 'Char-grilled shrimp with garlic butter.'],
+                        ['name' => 'Loaded Potato Skins', 'price' => 8.50, 'description' => 'Crispy potato skins with cheddar and bacon.'],
+                        ['name' => 'BBQ Chicken Wings', 'price' => 9.50, 'description' => 'Smoky wings tossed in house BBQ sauce.'],
                     ],
                     'Main Course' => [
                         ['name' => 'Grilled Salmon', 'price' => 18.00, 'description' => 'Served with seasonal vegetables.'],
                         ['name' => 'Ribeye Steak', 'price' => 26.00, 'description' => '300g ribeye, grilled to your liking.'],
+                        ['name' => 'T-Bone Steak', 'price' => 29.00, 'description' => '400g T-bone, char-grilled with herb butter.'],
+                        ['name' => 'BBQ Beef Ribs', 'price' => 24.00, 'description' => 'Slow-cooked ribs glazed in BBQ sauce.'],
+                        ['name' => 'Smoked Beef Brisket', 'price' => 22.00, 'description' => '12-hour smoked brisket, served with fries.'],
+                    ],
+                    'Sides' => [
+                        ['name' => 'Mac and Cheese', 'price' => 6.50, 'description' => 'Creamy three-cheese blend.'],
+                        ['name' => 'Grilled Corn', 'price' => 5.00, 'description' => 'Charred corn with chili-lime butter.'],
+                    ],
+                    'Dessert' => [
+                        ['name' => 'Chocolate Brownie', 'price' => 7.50, 'description' => 'Warm brownie with vanilla ice cream.'],
                     ],
                 ],
             ],
@@ -124,12 +174,23 @@ class DatabaseSeeder extends Seeder
                 'opening_hours' => '10:00 AM - 11:00 PM',
                 'about' => 'Fresh catch of the day served with a stunning sea view. Seafood the way it should be.',
                 'categories' => [
+                    'Starters' => [
+                        ['name' => 'Calamari Fritti', 'price' => 9.50, 'description' => 'Crispy fried calamari with lemon aioli.'],
+                        ['name' => 'Seafood Chowder', 'price' => 8.50, 'description' => 'Creamy chowder with shrimp, fish and clams.'],
+                    ],
                     'Seafood' => [
                         ['name' => 'Grilled Sea Bass', 'price' => 17.50, 'description' => 'Whole grilled sea bass with lemon herb butter.'],
                         ['name' => 'Shrimp Pasta', 'price' => 15.00, 'description' => 'Linguine with shrimp in a garlic white wine sauce.'],
+                        ['name' => 'Grilled Octopus', 'price' => 19.00, 'description' => 'Chargrilled octopus with olive oil and paprika.'],
+                        ['name' => 'Seafood Platter', 'price' => 28.00, 'description' => 'Shrimp, calamari, fish and mussels for two.'],
+                        ['name' => 'Lobster Risotto', 'price' => 24.00, 'description' => 'Creamy risotto with fresh lobster meat.'],
                     ],
                     'Dessert' => [
                         ['name' => 'Lemon Tart', 'price' => 7.00, 'description' => 'Tangy lemon curd on a buttery crust.'],
+                        ['name' => 'Coconut Panna Cotta', 'price' => 7.50, 'description' => 'Silky coconut cream with mango coulis.'],
+                    ],
+                    'Drinks' => [
+                        ['name' => 'Fresh Lemonade', 'price' => 4.00, 'description' => 'Freshly squeezed lemonade with mint.'],
                     ],
                 ],
             ],
@@ -148,7 +209,7 @@ class DatabaseSeeder extends Seeder
             $restaurant = Restaurant::updateOrCreate(
                 ['name' => $data['name']],
                 [
-                    'manager_id' => $admin->id,
+                    'manager_id' => $data['name'] === 'La Maison' ? $restaurantManager->id : $admin->id,
                     'address' => $data['address'],
                     'phone' => $data['phone'],
                     'email' => $data['email'],

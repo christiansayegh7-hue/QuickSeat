@@ -14,7 +14,10 @@ class AdminUserController extends Controller
 
     public function index()
     {
-        $users = User::withCount('reservations')->latest()->get();
+        $users = User::withCount('reservations')
+            ->with('managedRestaurants:id,name,manager_id')
+            ->latest()
+            ->get();
 
         return response()->json([
             'users' => $users

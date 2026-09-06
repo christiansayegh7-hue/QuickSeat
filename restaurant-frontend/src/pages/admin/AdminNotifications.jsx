@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Bell } from 'lucide-react'
 import api from '../../lib/api'
+import { useNotifications } from '../../context/NotificationsContext'
 
 export default function AdminNotifications() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const { refresh } = useNotifications()
 
   function fetchNotifications() {
     return api
@@ -26,6 +28,7 @@ export default function AdminNotifications() {
     setNotifications((list) => list.map((n) => (n.id === id ? { ...n, is_read: true } : n)))
     try {
       await api.patch(`/notifications/${id}/read`)
+      refresh()
     } catch {
       reload()
     }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { averageRating, restaurantImage } from '../../utils/format'
+import { averageRating, restaurantCoverUrl } from '../../utils/format'
 import StarRating from './StarRating'
 
 export default function RestaurantCard({ restaurant }) {
@@ -12,7 +12,7 @@ export default function RestaurantCard({ restaurant }) {
     >
       <div className="relative h-40 w-full overflow-hidden">
         <img
-          src={restaurantImage(restaurant.id)}
+          src={restaurantCoverUrl(restaurant)}
           alt={restaurant.name}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
           loading="lazy"

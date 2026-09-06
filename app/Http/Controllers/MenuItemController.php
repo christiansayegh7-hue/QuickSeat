@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\MenuItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MenuItemController extends Controller
 {
@@ -41,7 +42,7 @@ class MenuItemController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'image' => 'nullable|string',
+            'image' => 'nullable|image|max:5120',
             'is_available' => 'nullable|boolean',
         ]);
 
@@ -52,7 +53,7 @@ class MenuItemController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
-            'image' => $validated['image'] ?? null,
+            'image' => $request->hasFile('image') ? $request->file('image')->store('menu-items', 'public') : null,
             'is_available' => $validated['is_available'] ?? true,
         ]);
 
@@ -66,6 +67,8 @@ class MenuItemController extends Controller
     |--------------------------------------------------------------------------
     | Update menu item
     |--------------------------------------------------------------------------
+    | POST (not PATCH) so a real multipart image upload works reliably -
+    | mirrors the same approach used for updating a restaurant's cover photo.
     */
 
     public function update(Request $request, $id)
@@ -83,9 +86,19 @@ class MenuItemController extends Controller
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
-            'image' => 'nullable|string',
+            'image' => 'nullable|image|max:5120',
             'is_available' => 'sometimes|boolean',
         ]);
+
+        if ($request->hasFile('image')) {
+            if ($menuItem->image && !str_starts_with($menuItem->image, 'http')) {
+                Storage::disk('public')->delete($menuItem->image);
+            }
+
+            $validated['image'] = $request->file('image')->store('menu-items', 'public');
+        } else {
+            unset($validated['image']);
+        }
 
         $menuItem->update($validated);
 
@@ -109,6 +122,10 @@ class MenuItemController extends Controller
             return response()->json([
                 'message' => 'Menu item not found.'
             ], 404);
+        }
+
+        if ($menuItem->image && !str_starts_with($menuItem->image, 'http')) {
+            Storage::disk('public')->delete($menuItem->image);
         }
 
         $menuItem->delete();

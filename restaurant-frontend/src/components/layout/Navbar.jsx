@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { Bell, Leaf, LogOut, Menu, User, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationsContext'
 
 const links = [
   { to: '/', label: 'Home' },
@@ -12,6 +13,7 @@ const links = [
 
 export default function Navbar() {
   const { isAuthenticated, isAdmin, user, logout } = useAuth()
+  const { unreadCount } = useNotifications()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -56,10 +58,15 @@ export default function Navbar() {
           {isAuthenticated && (
             <Link
               to="/notifications"
-              className="rounded-full p-2 text-olive-700 transition hover:bg-olive-100"
-              aria-label="Notifications"
+              className="relative rounded-full p-2 text-olive-700 transition hover:bg-olive-100"
+              aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
             >
               <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Link>
           )}
 

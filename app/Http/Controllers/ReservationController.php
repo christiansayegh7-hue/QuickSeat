@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notification;
 use App\Models\Reservation;
 use App\Models\Table;
 use App\Models\MenuItem;
@@ -49,7 +50,6 @@ class ReservationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
             'restaurant_id' => 'required|exists:restaurants,id',
             'table_id' => 'required|exists:tables,id',
 
@@ -66,7 +66,9 @@ class ReservationController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
-        $user = \App\Models\User::find($validated['user_id']);
+        // The customer is never taken from the request body: they are already
+        // signed in, so their identity comes from the Sanctum token.
+        $user = $request->user();
 
         if ($user->is_blocked) {
             return response()->json([
@@ -155,10 +157,10 @@ class ReservationController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $reservation = DB::transaction(function () use ($validated) {
+        $reservation = DB::transaction(function () use ($validated, $user) {
 
             $reservation = Reservation::create([
-                'user_id' => $validated['user_id'],
+                'user_id' => $user->id,
                 'restaurant_id' => $validated['restaurant_id'],
                 'table_id' => $validated['table_id'],
 
@@ -201,6 +203,22 @@ class ReservationController extends Controller
                 ]);
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Notify the customer that their reservation was created
+            |--------------------------------------------------------------------------
+            */
+
+            $reservation->load('restaurant');
+
+            Notification::create([
+                'user_id' => $user->id,
+                'reservation_id' => $reservation->id,
+                'message' => "Your reservation at {$reservation->restaurant->name} on {$reservation->reservation_date} at {$reservation->start_time} has been confirmed. Code: {$reservation->reservation_code}.",
+                'type' => 'reservation_confirmed',
+                'is_read' => false,
+            ]);
+
             return $reservation;
         });
 
@@ -222,11 +240,7 @@ class ReservationController extends Controller
 
     public function myReservations(Request $request)
     {
-        $validated = $request->validate([
-        'user_id' => 'required|exists:users,id',
-        ]);
-
-        $reservations = Reservation::where('user_id', $validated['user_id'])
+        $reservations = Reservation::where('user_id', $request->user()->id)
         ->with([
             'restaurant',
             'table',
@@ -254,8 +268,11 @@ class ReservationController extends Controller
             ], 404);
         }
 
-        // Check that this reservation belongs to the user
-        if ($reservation->user_id != $request->user_id) {
+        // Only the reservation's own customer or an admin may cancel it -
+        // taken from the Sanctum-authenticated user, never a client-supplied id.
+        $authUser = $request->user();
+
+        if ($reservation->user_id != $authUser->id && $authUser->role !== 'admin') {
             return response()->json([
                 'message' => 'You are not allowed to cancel this reservation.'
             ], 403);
