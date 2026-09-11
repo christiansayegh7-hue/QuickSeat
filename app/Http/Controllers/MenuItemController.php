@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Models\ReservationItem;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -158,6 +159,18 @@ class MenuItemController extends Controller
             return response()->json([
                 'message' => 'Unauthorized. You do not manage this restaurant.'
             ], 403);
+        }
+
+        // menu_items.id is restrictOnDelete() from reservation_items - once a
+        // dish has ever been ordered (even on a past/cancelled reservation)
+        // it can no longer be deleted outright, to keep those historical
+        // orders intact. Mark it unavailable instead to hide it from the menu.
+        $hasBeenOrdered = ReservationItem::where('menu_item_id', $menuItem->id)->exists();
+
+        if ($hasBeenOrdered) {
+            return response()->json([
+                'message' => 'This menu item has already been ordered in one or more reservations and cannot be deleted. Set it as unavailable instead to hide it from the menu.'
+            ], 409);
         }
 
         if ($menuItem->image && !str_starts_with($menuItem->image, 'http')) {

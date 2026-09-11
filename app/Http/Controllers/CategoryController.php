@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\ReservationItem;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -128,6 +129,20 @@ class CategoryController extends Controller
             return response()->json([
                 'message' => 'Unauthorized. You do not manage this restaurant.'
             ], 403);
+        }
+
+        // Deleting a category cascades onto its menu items (cascadeOnDelete),
+        // but a menu item that has ever been ordered is restrictOnDelete()
+        // from reservation_items - so this would otherwise fail midway with
+        // a raw FK constraint error. Caught here up front instead.
+        $hasOrderedItems = ReservationItem::whereHas('menuItem', function ($query) use ($category) {
+            $query->where('category_id', $category->id);
+        })->exists();
+
+        if ($hasOrderedItems) {
+            return response()->json([
+                'message' => 'This category has menu items that have already been ordered in one or more reservations and cannot be deleted. Mark those items as unavailable instead, or move them to another category first.'
+            ], 409);
         }
 
         $category->delete();
