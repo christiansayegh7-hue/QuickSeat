@@ -110,9 +110,7 @@ function EditRestaurantModal({ restaurant, onClose, onSaved }) {
     if (imageFile) body.append('image', imageFile)
 
     try {
-      const { data } = await api.post(`/admin/restaurants/${restaurant.id}`, body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      const { data } = await api.post(`/admin/restaurants/${restaurant.id}`, body)
       onSaved(data.restaurant)
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not save changes.'))

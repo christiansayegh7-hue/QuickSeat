@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { CalendarX2, MapPin } from 'lucide-react'
 import api, { apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { formatDate, formatTime, statusStyles } from '../utils/format'
+import { formatCurrency, formatDate, formatTime, statusStyles } from '../utils/format'
 
 export default function MyBookings() {
   const { user } = useAuth()
@@ -99,6 +99,18 @@ export default function MyBookings() {
                     {r.table ? `T${r.table.table_number}` : '—'}
                   </div>
                 </div>
+
+                {r.items?.length > 0 && (
+                  <div className="mt-4 rounded-xl bg-olive-50 p-3">
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-olive-500">Pre-ordered Items</p>
+                    {r.items.map((row) => (
+                      <div key={row.id} className="flex justify-between text-sm text-olive-700">
+                        <span>{row.quantity} × {row.menu_item?.name}</span>
+                        <span>{formatCurrency(row.subtotal)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="mt-4 flex items-center justify-between border-t border-olive-50 pt-3">
                   <p className="text-xs text-olive-400">Code: {r.reservation_code}</p>

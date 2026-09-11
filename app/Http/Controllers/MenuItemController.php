@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -33,10 +34,16 @@ class MenuItemController extends Controller
     |--------------------------------------------------------------------------
     | Create menu item
     |--------------------------------------------------------------------------
+    | Same admin-vs-restaurant-manager pattern as CategoryController: admin
+    | may target any category, a restaurant manager only one belonging to
+    | their own restaurant - verified from the category's restaurant_id,
+    | never trusted from the request.
     */
 
     public function store(Request $request)
     {
+        $user = $request->user();
+
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
@@ -47,6 +54,12 @@ class MenuItemController extends Controller
         ]);
 
         $category = Category::find($validated['category_id']);
+
+        if (!$this->canManage($user, $category->restaurant_id)) {
+            return response()->json([
+                'message' => 'Unauthorized. You do not manage this restaurant.'
+            ], 403);
+        }
 
         $menuItem = MenuItem::create([
             'category_id' => $category->id,
@@ -73,12 +86,18 @@ class MenuItemController extends Controller
 
     public function update(Request $request, $id)
     {
-        $menuItem = MenuItem::find($id);
+        $menuItem = MenuItem::with('category')->find($id);
 
         if (!$menuItem) {
             return response()->json([
                 'message' => 'Menu item not found.'
             ], 404);
+        }
+
+        if (!$this->canManage($request->user(), $menuItem->category->restaurant_id)) {
+            return response()->json([
+                'message' => 'Unauthorized. You do not manage this restaurant.'
+            ], 403);
         }
 
         $validated = $request->validate([
@@ -89,6 +108,17 @@ class MenuItemController extends Controller
             'image' => 'nullable|image|max:5120',
             'is_available' => 'sometimes|boolean',
         ]);
+
+        // Moving a menu item to a different category must not be a way to
+        // smuggle it into another restaurant's menu.
+        if (isset($validated['category_id'])) {
+            $targetCategory = Category::find($validated['category_id']);
+            if (!$this->canManage($request->user(), $targetCategory->restaurant_id)) {
+                return response()->json([
+                    'message' => 'Unauthorized. You do not manage that restaurant.'
+                ], 403);
+            }
+        }
 
         if ($request->hasFile('image')) {
             if ($menuItem->image && !str_starts_with($menuItem->image, 'http')) {
@@ -114,14 +144,20 @@ class MenuItemController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $menuItem = MenuItem::find($id);
+        $menuItem = MenuItem::with('category')->find($id);
 
         if (!$menuItem) {
             return response()->json([
                 'message' => 'Menu item not found.'
             ], 404);
+        }
+
+        if (!$this->canManage($request->user(), $menuItem->category->restaurant_id)) {
+            return response()->json([
+                'message' => 'Unauthorized. You do not manage this restaurant.'
+            ], 403);
         }
 
         if ($menuItem->image && !str_starts_with($menuItem->image, 'http')) {
@@ -133,5 +169,18 @@ class MenuItemController extends Controller
         return response()->json([
             'message' => 'Menu item deleted successfully.'
         ]);
+    }
+
+    private function canManage(User $user, int $restaurantId): bool
+    {
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        if ($user->role === 'restaurant') {
+            return $user->managedRestaurants()->where('id', $restaurantId)->exists();
+        }
+
+        return false;
     }
 }

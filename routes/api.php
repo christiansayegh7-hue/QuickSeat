@@ -9,15 +9,26 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\AdminRestaurantApplicationController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\RestaurantController;
+use App\Http\Controllers\TableController;
 
 
 Route::post('/register', [AuthController::class, 'register']);
 
+// Email verification for registration: send a 6-digit code, then verify it -
+// register() itself checks server-side that the email was recently verified,
+// so the code never needs to be re-sent along with the registration form.
+Route::post('/email/otp/send', [AuthController::class, 'sendEmailOtp'])->middleware('throttle:3,1');
+Route::post('/email/otp/verify', [AuthController::class, 'verifyEmailOtp'])->middleware('throttle:10,1');
+
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+
+Route::middleware('auth:sanctum')->patch('/profile/password', [AuthController::class, 'changePassword']);
 
 // The customer is identified from the Sanctum token on every one of these,
 // never from a client-supplied user_id.
@@ -28,6 +39,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reservations/my', [ReservationController::class, 'myReservations']);
 
     Route::patch('/reservations/{id}/cancel', [ReservationController::class, 'cancel']);
+
+    // Restaurant-manager-only in practice (ownership checked inside the
+    // controller, same convention as /menu-items, /categories, /tables).
+    Route::post('/reservations/{id}/items', [ReservationController::class, 'addItems']);
 
 });
 
@@ -53,24 +68,26 @@ Route::get(
     [MenuItemController::class, 'restaurantMenu']
 );
 
-Route::middleware(['auth:sanctum', 'admin'])->post(
+// admin-vs-restaurant-manager ownership is enforced inside the controller
+// (same pattern as CategoryController), so these only need auth:sanctum.
+Route::middleware('auth:sanctum')->post(
     '/menu-items',
     [MenuItemController::class, 'store']
 );
 
-Route::middleware(['auth:sanctum', 'admin'])->patch(
+Route::middleware('auth:sanctum')->patch(
     '/menu-items/{id}',
     [MenuItemController::class, 'update']
 );
 
 // Same handler as PATCH above, but reachable via POST so a real multipart
 // image upload works reliably (mirrors the restaurant cover photo update).
-Route::middleware(['auth:sanctum', 'admin'])->post(
+Route::middleware('auth:sanctum')->post(
     '/menu-items/{id}',
     [MenuItemController::class, 'update']
 );
 
-Route::middleware(['auth:sanctum', 'admin'])->delete(
+Route::middleware('auth:sanctum')->delete(
     '/menu-items/{id}',
     [MenuItemController::class, 'destroy']
 );
@@ -84,6 +101,8 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/restaurants/{restaurantId}/reviews', [ReviewController::class, 'restaurantReviews']);
 
 Route::get('/restaurants/{restaurantId}/available-tables', [ReservationController::class, 'availableTables']);
+
+Route::get('/restaurants/{restaurantId}/available-start-times', [ReservationController::class, 'availableStartTimes']);
 
 Route::middleware(['auth:sanctum', 'admin'])->get(
     '/admin/restaurants/{restaurantId}/profits',
@@ -111,6 +130,41 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::patch('/admin/users/{id}/block', [AdminUserController::class, 'block']);
 
     Route::patch('/admin/users/{id}/unblock', [AdminUserController::class, 'unblock']);
+
+});
+
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin/restaurant-applications')->group(function () {
+
+    Route::get('/', [AdminRestaurantApplicationController::class, 'index']);
+
+    Route::patch('/{id}/approve', [AdminRestaurantApplicationController::class, 'approve']);
+
+    Route::patch('/{id}/reject', [AdminRestaurantApplicationController::class, 'reject']);
+
+});
+
+// A restaurant manager only ever operates on THEIR OWN restaurant - it is
+// resolved server-side from the token, never from a route/body parameter.
+Route::middleware(['auth:sanctum', 'restaurant'])->prefix('manager')->group(function () {
+
+    Route::get('/restaurant', [ManagerController::class, 'restaurant']);
+
+    // POST (not PATCH) so a real multipart image upload works reliably.
+    Route::post('/restaurant', [ManagerController::class, 'updateRestaurant']);
+
+    Route::get('/reservations', [ManagerController::class, 'reservations']);
+
+});
+
+// admin-vs-restaurant-manager ownership is enforced inside the controller
+// (same pattern as CategoryController), so these only need auth:sanctum.
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/tables', [TableController::class, 'store']);
+
+    Route::patch('/tables/{id}', [TableController::class, 'update']);
+
+    Route::delete('/tables/{id}', [TableController::class, 'destroy']);
 
 });
 

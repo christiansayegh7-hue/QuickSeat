@@ -1,14 +1,46 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Calendar, LogOut, Shield, User } from 'lucide-react'
+import { Bell, Calendar, KeyRound, LogOut, Shield, Store, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import PasswordRequirements from '../components/ui/PasswordRequirements'
+import { isPasswordValid } from '../utils/password'
 
 export default function Profile() {
-  const { user, logout } = useAuth()
+  const { user, logout, changePassword } = useAuth()
   const navigate = useNavigate()
+
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
 
   async function handleLogout() {
     await logout()
     navigate('/')
+  }
+
+  async function handlePasswordSubmit(e) {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    if (!isPasswordValid(newPassword)) {
+      setPasswordError('Please meet all password requirements below.')
+      return
+    }
+
+    setChangingPassword(true)
+    const result = await changePassword(currentPassword, newPassword)
+    setChangingPassword(false)
+
+    if (result.success) {
+      setPasswordSuccess(result.message)
+      setCurrentPassword('')
+      setNewPassword('')
+    } else {
+      setPasswordError(result.message)
+    }
   }
 
   return (
@@ -22,6 +54,11 @@ export default function Profile() {
         {user?.role === 'admin' && (
           <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-olive-100 px-3 py-1 text-xs font-semibold text-olive-800">
             <Shield size={12} /> Administrator
+          </span>
+        )}
+        {user?.role === 'restaurant' && (
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+            <Store size={12} /> Restaurant Manager
           </span>
         )}
       </div>
@@ -48,6 +85,49 @@ export default function Profile() {
           Go to Admin Dashboard
         </Link>
       )}
+      {user?.role === 'restaurant' && (
+        <Link to="/manager" className="mt-4 block rounded-xl bg-olive-900 p-5 text-center font-semibold text-white shadow-sm hover:bg-olive-950">
+          Go to Restaurant Dashboard
+        </Link>
+      )}
+
+      <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-olive-100">
+        <h2 className="mb-4 flex items-center gap-2 font-serif text-lg font-bold text-olive-950">
+          <KeyRound size={18} /> Change Password
+        </h2>
+        {passwordError && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{passwordError}</p>}
+        {passwordSuccess && <p className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{passwordSuccess}</p>}
+        <form onSubmit={handlePasswordSubmit} className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-olive-600">Current Password</label>
+            <input
+              type="password"
+              required
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full rounded-lg border border-olive-200 px-3 py-2 text-sm outline-none focus:border-olive-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-olive-600">New Password</label>
+            <input
+              type="password"
+              required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded-lg border border-olive-200 px-3 py-2 text-sm outline-none focus:border-olive-500"
+            />
+            <PasswordRequirements value={newPassword} />
+          </div>
+          <button
+            type="submit"
+            disabled={changingPassword}
+            className="w-full rounded-full bg-olive-800 py-2.5 text-sm font-semibold text-white hover:bg-olive-900 disabled:opacity-60"
+          >
+            {changingPassword ? 'Updating...' : 'Update Password'}
+          </button>
+        </form>
+      </div>
 
       <button
         onClick={handleLogout}

@@ -37,6 +37,6 @@ class MonthlyRestaurantReport extends Notification
             ->line("Reservations: {$this->stats['reservations_count']}")
             ->line("Customers served: {$this->stats['customers_count']}")
             ->line("Total revenue: \${$this->stats['total_revenue']}")
-            ->line('Thank you for using Olive Restaurant.');
+            ->line('Thank you for using QuickSeat.');
     }
 }

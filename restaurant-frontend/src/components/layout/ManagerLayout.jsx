@@ -1,45 +1,18 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import {
-  BarChart3,
-  Bell,
-  CalendarCheck,
-  ClipboardList,
-  Compass,
-  DollarSign,
-  LayoutDashboard,
-  Leaf,
-  LogOut,
-  Menu,
-  MessageSquare,
-  Settings,
-  Store,
-  User,
-  Users,
-  UtensilsCrossed,
-  X,
-} from 'lucide-react'
+import { CalendarCheck, Compass, LayoutDashboard, LogOut, Menu, Store, User, UtensilsCrossed, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { useNotifications } from '../../context/NotificationsContext'
 
 const links = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/admin/restaurants', label: 'Restaurants', icon: Store },
-  { to: '/admin/reservations', label: 'Reservations', icon: CalendarCheck },
-  { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/restaurant-requests', label: 'Restaurant Requests', icon: ClipboardList },
-  { to: '/admin/menu-items', label: 'Menu Items', icon: UtensilsCrossed },
-  { to: '/admin/reviews', label: 'Reviews', icon: MessageSquare },
-  { to: '/admin/profits', label: 'Profits', icon: DollarSign },
-  { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/admin/notifications', label: 'Notifications', icon: Bell, badge: true },
-  { to: '/admin/settings', label: 'Settings', icon: Settings },
+  { to: '/manager', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/manager/restaurant', label: 'My Restaurant', icon: Store },
+  { to: '/manager/reservations', label: 'Reservations', icon: CalendarCheck },
+  { to: '/manager/menu-items', label: 'Menu Items', icon: UtensilsCrossed },
   { to: '/', label: 'Explore', icon: Compass, end: true },
 ]
 
 function SidebarContent({ onNavigate }) {
   const { logout } = useAuth()
-  const { unreadCount } = useNotifications()
   const navigate = useNavigate()
 
   async function handleLogout() {
@@ -51,16 +24,16 @@ function SidebarContent({ onNavigate }) {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-6 py-6">
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-olive-600 text-white">
-          <Leaf size={18} />
+          <Store size={18} />
         </span>
         <div className="leading-tight text-white">
           <span className="block font-serif text-lg font-bold">QuickSeat</span>
-          <span className="-mt-1 block text-[10px] uppercase tracking-widest text-olive-300">Restaurant</span>
+          <span className="-mt-1 block text-[10px] uppercase tracking-widest text-olive-300">Restaurant Manager</span>
         </div>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {links.map(({ to, label, icon: Icon, end, badge }) => (
+        {links.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -74,11 +47,6 @@ function SidebarContent({ onNavigate }) {
           >
             <Icon size={18} />
             {label}
-            {badge && unreadCount > 0 && (
-              <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
           </NavLink>
         ))}
       </nav>
@@ -96,7 +64,7 @@ function SidebarContent({ onNavigate }) {
   )
 }
 
-export default function AdminLayout() {
+export default function ManagerLayout() {
   const [open, setOpen] = useState(false)
   const { user } = useAuth()
 
@@ -121,13 +89,13 @@ export default function AdminLayout() {
             <button className="rounded-lg p-2 text-olive-800 md:hidden" onClick={() => setOpen(true)}>
               {open ? <X size={20} /> : <Menu size={20} />}
             </button>
-            <h1 className="text-lg font-semibold text-olive-950">Dashboard</h1>
+            <h1 className="text-lg font-semibold text-olive-950">Restaurant Dashboard</h1>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-olive-200 py-1.5 pl-1.5 pr-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-olive-800 text-white">
               <User size={14} />
             </span>
-            <span className="text-sm font-medium text-olive-800">{user?.name || 'Admin'}</span>
+            <span className="text-sm font-medium text-olive-800">{user?.name || 'Manager'}</span>
           </div>
         </header>
 

@@ -10,7 +10,7 @@ export default function Footer() {
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-olive-700">
               <Leaf size={18} />
             </span>
-            <span className="font-serif text-lg font-bold">Olive Restaurant</span>
+            <span className="font-serif text-lg font-bold">QuickSeat</span>
           </div>
           <p className="mt-3 text-sm text-olive-300">
             Good food, great moments. Discover the best restaurants and book your table in seconds.
@@ -41,12 +41,12 @@ export default function Footer() {
           <ul className="space-y-2 text-sm text-olive-300">
             <li className="flex items-center gap-2"><MapPin size={14} /> Downtown, Main Street</li>
             <li className="flex items-center gap-2"><Phone size={14} /> +962 79 000 0000</li>
-            <li className="flex items-center gap-2"><Mail size={14} /> hello@olive.example</li>
+            <li className="flex items-center gap-2"><Mail size={14} /> hello@quickseat.example</li>
           </ul>
         </div>
       </div>
       <p className="border-t border-olive-800 pt-6 text-center text-xs text-olive-400">
-        © {new Date().getFullYear()} Olive Restaurant. All rights reserved.
+        © {new Date().getFullYear()} QuickSeat. All rights reserved.
       </p>
     </footer>
   )

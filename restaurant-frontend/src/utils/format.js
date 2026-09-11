@@ -58,13 +58,22 @@ export function formatTime(timeStr) {
   return `${hour12}:${m} ${suffix}`
 }
 
-export function addHours(timeStr, hours) {
+export function addMinutes(timeStr, minutes) {
   const [h, m] = timeStr.split(':').map(Number)
-  const total = h * 60 + m + hours * 60
+  const total = h * 60 + m + minutes
   const wrapped = ((total % (24 * 60)) + 24 * 60) % (24 * 60)
   const hh = Math.floor(wrapped / 60)
   const mm = wrapped % 60
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
+export function addHours(timeStr, hours) {
+  return addMinutes(timeStr, hours * 60)
+}
+
+export function formatDuration(minutes) {
+  const hours = minutes / 60
+  return hours === 1 ? '1 hour' : `${hours % 1 === 0 ? hours : hours.toFixed(1)} hours`
 }
 
 export function statusStyles(status) {

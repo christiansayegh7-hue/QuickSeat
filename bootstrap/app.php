@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'restaurant' => \App\Http\Middleware\RestaurantMiddleware::class,
         ]);
 
         // This app has no server-rendered login page (the React frontend

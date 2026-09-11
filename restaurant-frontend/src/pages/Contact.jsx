@@ -26,7 +26,7 @@ export default function Contact() {
           </div>
           <div className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-olive-100">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-olive-100 text-olive-800"><Mail size={18} /></span>
-            <p className="text-sm text-olive-700">hello@olive.example</p>
+            <p className="text-sm text-olive-700">hello@quickseat.example</p>
           </div>
         </div>
 

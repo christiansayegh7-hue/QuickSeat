@@ -12,7 +12,7 @@ const links = [
 ]
 
 export default function Navbar() {
-  const { isAuthenticated, isAdmin, user, logout } = useAuth()
+  const { isAuthenticated, isAdmin, isManager, user, logout } = useAuth()
   const { unreadCount } = useNotifications()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
@@ -30,7 +30,7 @@ export default function Navbar() {
             <Leaf size={18} />
           </span>
           <span className="leading-tight">
-            <span className="block font-serif text-lg font-bold text-olive-900">Olive</span>
+            <span className="block font-serif text-lg font-bold text-olive-900">QuickSeat</span>
             <span className="-mt-1 block text-[10px] font-medium uppercase tracking-widest text-olive-500">
               Restaurant
             </span>
@@ -73,7 +73,7 @@ export default function Navbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
               <Link
-                to={isAdmin ? '/admin' : '/profile'}
+                to={isAdmin ? '/admin' : isManager ? '/manager' : '/profile'}
                 className="flex items-center gap-2 rounded-full border border-olive-200 py-1.5 pl-1.5 pr-3 text-sm font-medium text-olive-800 hover:bg-olive-50"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-olive-800 text-white">
@@ -139,7 +139,7 @@ export default function Navbar() {
             {isAuthenticated ? (
               <>
                 <Link
-                  to={isAdmin ? '/admin' : '/profile'}
+                  to={isAdmin ? '/admin' : isManager ? '/manager' : '/profile'}
                   onClick={() => setOpen(false)}
                   className="rounded-lg border border-olive-200 px-3 py-2 text-center text-sm font-medium text-olive-800"
                 >

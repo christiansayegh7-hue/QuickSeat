@@ -6,9 +6,7 @@ import { formatCurrency, menuItemImageUrl } from '../../utils/format'
 const emptyForm = { id: null, category_id: '', name: '', description: '', price: '', is_available: true }
 const emptyCategoryForm = { id: null, name: '', description: '', is_active: true }
 
-export default function AdminMenuItems() {
-  const [restaurants, setRestaurants] = useState([])
-  const [restaurantId, setRestaurantId] = useState('')
+export default function ManagerMenuItems() {
   const [restaurant, setRestaurant] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,30 +20,22 @@ export default function AdminMenuItems() {
   const [showCategoryForm, setShowCategoryForm] = useState(false)
   const [categorySaving, setCategorySaving] = useState(false)
 
-  useEffect(() => {
-    api.get('/restaurants').then(({ data }) => {
-      const list = data.restaurants || []
-      setRestaurants(list)
-      if (list.length) setRestaurantId(String(list[0].id))
-    })
-  }, [])
-
-  function fetchRestaurant(id) {
-    if (!id) return Promise.resolve()
+  function fetchRestaurant() {
     return api
-      .get(`/restaurants/${id}`)
+      .get('/manager/restaurant')
       .then(({ data }) => setRestaurant(data.restaurant))
+      .catch((err) => setError(apiErrorMessage(err, 'Could not load your restaurant.')))
       .finally(() => setLoading(false))
   }
 
-  function reloadRestaurant(id) {
+  function reload() {
     setLoading(true)
-    fetchRestaurant(id)
+    fetchRestaurant()
   }
 
   useEffect(() => {
-    fetchRestaurant(restaurantId)
-  }, [restaurantId])
+    fetchRestaurant()
+  }, [])
 
   const categories = restaurant?.categories || []
 
@@ -99,7 +89,7 @@ export default function AdminMenuItems() {
         await api.post('/menu-items', body)
       }
       setShowForm(false)
-      reloadRestaurant(restaurantId)
+      reload()
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not save this menu item.'))
     } finally {
@@ -111,7 +101,7 @@ export default function AdminMenuItems() {
     if (!confirm('Delete this menu item?')) return
     try {
       await api.delete(`/menu-items/${id}`)
-      reloadRestaurant(restaurantId)
+      reload()
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not delete this menu item.'))
     }
@@ -146,15 +136,16 @@ export default function AdminMenuItems() {
           is_active: categoryForm.is_active,
         })
       } else {
+        // No restaurant_id sent - the backend infers it from the
+        // authenticated manager's own restaurant.
         await api.post('/categories', {
-          restaurant_id: Number(restaurantId),
           name: categoryForm.name,
           description: categoryForm.description || null,
           is_active: categoryForm.is_active,
         })
       }
       setShowCategoryForm(false)
-      reloadRestaurant(restaurantId)
+      reload()
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not save this category.'))
     } finally {
@@ -166,7 +157,7 @@ export default function AdminMenuItems() {
     if (!confirm('Delete this category? Its menu items will be deleted too.')) return
     try {
       await api.delete(`/categories/${id}`)
-      reloadRestaurant(restaurantId)
+      reload()
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not delete this category.'))
     }
@@ -175,23 +166,13 @@ export default function AdminMenuItems() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h2 className="font-serif text-xl font-bold text-olive-950">Menu Items</h2>
-          <select
-            value={restaurantId}
-            onChange={(e) => setRestaurantId(e.target.value)}
-            className="rounded-lg border border-olive-200 px-3 py-1.5 text-sm"
-          >
-            {restaurants.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </div>
+        <h2 className="font-serif text-xl font-bold text-olive-950">
+          {restaurant ? `${restaurant.name} - Menu` : 'Menu Items'}
+        </h2>
         <div className="flex gap-2">
           <button
             onClick={openCreateCategory}
-            disabled={!restaurantId}
-            className="flex items-center gap-1 rounded-full border border-olive-300 px-4 py-2 text-sm font-semibold text-olive-800 hover:bg-olive-50 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-full border border-olive-300 px-4 py-2 text-sm font-semibold text-olive-800 hover:bg-olive-50"
           >
             <FolderPlus size={16} /> Add Category
           </button>
@@ -211,7 +192,7 @@ export default function AdminMenuItems() {
         <p className="text-olive-500">Loading menu...</p>
       ) : categories.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-olive-500 ring-1 ring-olive-100">
-          This restaurant has no categories yet. Use "Add Category" above to create one (e.g. Starters, Main Course).
+          You have no categories yet. Use "Add Category" above to create one (e.g. Starters, Main Course).
         </p>
       ) : (
         <div className="space-y-6">

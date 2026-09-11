@@ -39,7 +39,7 @@ export default function Home() {
         {/* To change the homepage background photo, replace this file (keep the same name):
             restaurant-frontend/public/images/home-hero.jpg */}
         <div className="absolute inset-0 bg-[url('/images/home-hero.jpg')] bg-cover bg-center" />
-        <div className="absolute inset-0 bg-gradient-to-r from-olive-950/90 via-olive-950/70 to-olive-950/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-olive-950/75 via-olive-950/40 to-olive-950/10" />
         <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-36">
           <h1 className="max-w-xl font-serif text-4xl font-bold leading-tight text-white sm:text-5xl">
             Good Food, Great Moments
@@ -59,7 +59,6 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-widest text-olive-500">— ❧ —</span>
             <h2 className="mt-2 font-serif text-2xl font-bold text-olive-950">Popular Restaurants</h2>
           </div>
           <Link to="/restaurants" className="text-sm font-semibold text-olive-700 hover:text-olive-900">

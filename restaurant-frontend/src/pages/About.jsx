@@ -6,9 +6,9 @@ export default function About() {
       <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-olive-800 text-white">
         <Leaf size={26} />
       </span>
-      <h1 className="text-center font-serif text-3xl font-bold text-olive-950">About Olive</h1>
+      <h1 className="text-center font-serif text-3xl font-bold text-olive-950">About QuickSeat</h1>
       <p className="mx-auto mt-4 max-w-xl text-center text-olive-600">
-        Olive connects food lovers with the best restaurants in town. From cozy neighborhood spots to
+        QuickSeat connects food lovers with the best restaurants in town. From cozy neighborhood spots to
         fine dining experiences, we make discovering and booking a table effortless — anytime, anywhere.
       </p>
       <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">

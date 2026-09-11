@@ -25,11 +25,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Renamed from @olive.com to @gmail.com - update the existing rows in
+        // place first so re-running this seeder doesn't create duplicate
+        // admin/manager accounts (and orphan the manager_id/manager_id FKs
+        // pointing at the old rows).
+        User::where('email', 'admin@olive.com')->update(['email' => 'admin@gmail.com']);
+        User::where('email', 'manager@olive.com')->update(['email' => 'manager@gmail.com']);
+
         $admin = User::updateOrCreate(
-            ['email' => 'admin@olive.com'],
+            ['email' => 'admin@gmail.com'],
             [
                 'name' => 'Admin User',
-                'password' => 'password',
+                'password' => 'P@ssword123',
                 'role' => 'admin',
             ]
         );
@@ -38,7 +45,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'rawan@example.com'],
             [
                 'name' => 'Rawan Ahmad',
-                'password' => 'password',
+                'password' => 'P@ssword123',
                 'role' => 'customer',
             ]
         );
@@ -47,7 +54,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'omar@example.com'],
             [
                 'name' => 'Omar Al-Zoubi',
-                'password' => 'password',
+                'password' => 'P@ssword123',
                 'role' => 'customer',
             ]
         );
@@ -56,10 +63,10 @@ class DatabaseSeeder extends Seeder
         // CategoryController's manager branch has a real user to log in as.
         // It is assigned as the manager of La Maison below.
         $restaurantManager = User::updateOrCreate(
-            ['email' => 'manager@olive.com'],
+            ['email' => 'manager@gmail.com'],
             [
                 'name' => 'La Maison Manager',
-                'password' => 'password',
+                'password' => 'P@ssword123',
                 'role' => 'restaurant',
             ]
         );
@@ -73,6 +80,9 @@ class DatabaseSeeder extends Seeder
                 'restaurant_type' => 'Italian',
                 'price_range' => '$$',
                 'opening_hours' => '11:00 AM - 11:00 PM',
+                'opening_time' => '11:00',
+                'closing_time' => '23:00',
+                'max_capacity' => 30,
                 'about' => 'La Maison brings the taste of Italy to your table. Enjoy a warm atmosphere, friendly service, and delicious homemade dishes.',
                 'categories' => [
                     'Starters' => [
@@ -110,6 +120,9 @@ class DatabaseSeeder extends Seeder
                 'restaurant_type' => 'Healthy',
                 'price_range' => '$$',
                 'opening_hours' => '08:00 AM - 10:00 PM',
+                'opening_time' => '08:00',
+                'closing_time' => '22:00',
+                'max_capacity' => 40,
                 'about' => 'Fresh, healthy and colorful dishes made from locally sourced ingredients, for a guilt-free dining experience.',
                 'categories' => [
                     'Salads' => [
@@ -141,6 +154,9 @@ class DatabaseSeeder extends Seeder
                 'restaurant_type' => 'Steakhouse',
                 'price_range' => '$$$',
                 'opening_hours' => '12:00 PM - 12:00 AM',
+                'opening_time' => '12:00',
+                'closing_time' => '00:00',
+                'max_capacity' => 50,
                 'about' => 'Premium cuts, char-grilled to perfection. A must for steak and BBQ lovers.',
                 'categories' => [
                     'Starters' => [
@@ -172,6 +188,9 @@ class DatabaseSeeder extends Seeder
                 'restaurant_type' => 'Seafood',
                 'price_range' => '$$',
                 'opening_hours' => '10:00 AM - 11:00 PM',
+                'opening_time' => '10:00',
+                'closing_time' => '23:00',
+                'max_capacity' => 35,
                 'about' => 'Fresh catch of the day served with a stunning sea view. Seafood the way it should be.',
                 'categories' => [
                     'Starters' => [
@@ -216,12 +235,17 @@ class DatabaseSeeder extends Seeder
                     'restaurant_type' => $data['restaurant_type'],
                     'price_range' => $data['price_range'],
                     'opening_hours' => $data['opening_hours'],
+                    'opening_time' => $data['opening_time'],
+                    'closing_time' => $data['closing_time'],
+                    'max_capacity' => $data['max_capacity'],
                     'description' => $data['about'],
                 ]
             );
 
-            // Tables
+            // Tables - "location" is a short description of where the table
+            // sits in the restaurant, shown to customers while booking.
             $capacities = [2, 2, 4, 4, 6, 8];
+            $locations = ['Near the window', 'Indoor', 'Outdoor', 'Quiet area', 'Near the entrance', 'Upstairs'];
             foreach ($capacities as $i => $capacity) {
                 Table::updateOrCreate(
                     [
@@ -230,7 +254,7 @@ class DatabaseSeeder extends Seeder
                     ],
                     [
                         'capacity' => $capacity,
-                        'location' => $capacity >= 6 ? 'Hall' : ($i % 2 === 0 ? 'Window' : 'Patio'),
+                        'location' => $locations[$i % count($locations)],
                         'status' => 'available',
                     ]
                 );

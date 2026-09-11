@@ -13,6 +13,7 @@ class Table extends Model
         'restaurant_id',
         'table_number',
         'capacity',
+        'location',
         'status',
     ];
 

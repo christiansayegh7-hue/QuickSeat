@@ -12,7 +12,7 @@ const TABS = ['Overview', 'Menu', 'Reviews']
 export default function RestaurantDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, isManager, user } = useAuth()
   const [restaurant, setRestaurant] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('Overview')
@@ -60,7 +60,7 @@ export default function RestaurantDetails() {
   const reviews = restaurant.reviews || [];
   const rating = averageRating(reviews)
   const breakdown = ratingBreakdown(reviews)
-  const menuItems = (restaurant.categories || []).flatMap((c) => c.menuItems || [])
+  const menuItems = (restaurant.categories || []).flatMap((c) => c.menu_items || [])
   const alreadyReviewed = user && reviews.some((r) => r.user_id === user.id)
 
   async function submitReview(e) {
@@ -81,11 +81,15 @@ export default function RestaurantDetails() {
     }
   }
 
+  const ownRestaurantId = user?.managed_restaurants?.[0]?.id
+  const isForeignRestaurant = isManager && ownRestaurantId !== Number(id)
+
   function handleBookClick() {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/restaurants/${id}/book` } })
       return
     }
+    if (isForeignRestaurant) return
     navigate(`/restaurants/${id}/book`)
   }
 
@@ -132,12 +136,26 @@ export default function RestaurantDetails() {
             </p>
           )}
 
-          <button
-            onClick={handleBookClick}
-            className="mt-6 w-full rounded-full bg-olive-800 py-3 text-sm font-semibold text-white transition hover:bg-olive-900"
-          >
-            Book a Table
-          </button>
+          {isForeignRestaurant ? (
+            <>
+              <button
+                disabled
+                className="mt-6 w-full cursor-not-allowed rounded-full bg-olive-200 py-3 text-sm font-semibold text-olive-500"
+              >
+                Book a Table
+              </button>
+              <p className="mt-2 text-center text-xs text-olive-500">
+                Restaurant accounts can only make reservations at their own restaurant.
+              </p>
+            </>
+          ) : (
+            <button
+              onClick={handleBookClick}
+              className="mt-6 w-full rounded-full bg-olive-800 py-3 text-sm font-semibold text-white transition hover:bg-olive-900"
+            >
+              Book a Table
+            </button>
+          )}
         </div>
       </div>
 
@@ -204,27 +222,24 @@ export default function RestaurantDetails() {
         )}
 
         {tab === 'Menu' && (
-          <div className="space-y-10">
-            {(restaurant.categories || []).map((category) => (
-              <div key={category.id}>
-                <h2 className="mb-4 font-serif text-lg font-bold text-olive-950">{category.name}</h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {(category.menuItems || []).map((item) => (
-                    <div key={item.id} className="flex gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-olive-100">
-                      <img src={menuItemImageUrl(item)} alt={item.name} className="h-20 w-20 shrink-0 rounded-lg object-cover" />
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-semibold text-olive-950">{item.name}</p>
-                          <p className="whitespace-nowrap text-sm font-semibold text-olive-700">{formatCurrency(item.price)}</p>
-                        </div>
-                        <p className="mt-1 text-xs text-olive-600">{item.description}</p>
-                      </div>
-                    </div>
-                  ))}
+          <div className="space-y-14">
+            {(restaurant.categories || []).map((category) => {
+              const items = (category.menu_items || []).filter((i) => i.is_available)
+              if (items.length === 0) return null
+              const mid = Math.ceil(items.length / 2)
+              return (
+                <div key={category.id}>
+                  <div className="mb-8 text-center">
+                    <h2 className="mt-2 font-serif text-2xl font-bold text-olive-950">{category.name}</h2>
+                  </div>
+                  <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+                    <MenuColumn items={items.slice(0, mid)} />
+                    <MenuColumn items={items.slice(mid)} className="sm:border-l sm:border-olive-100 sm:pl-10" />
+                  </div>
                 </div>
-              </div>
-            ))}
-            {menuItems.length === 0 && <p className="text-olive-500">No menu items published yet.</p>}
+              )
+            })}
+            {menuItems.length === 0 && <p className="text-center text-olive-500">No menu items published yet.</p>}
           </div>
         )}
 
@@ -293,6 +308,31 @@ export default function RestaurantDetails() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function MenuColumn({ items, className = '' }) {
+  if (items.length === 0) return <div className={className} />
+  return (
+    <div className={`divide-y divide-olive-50 ${className}`}>
+      {items.map((item) => (
+        <div key={item.id} className="flex gap-4 py-4 first:pt-0">
+          <img
+            src={menuItemImageUrl(item)}
+            alt={item.name}
+            className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-olive-100"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="font-serif font-semibold text-olive-950">{item.name}</p>
+              <span className="h-px flex-1 border-t border-dotted border-olive-200" />
+              <p className="whitespace-nowrap text-sm font-semibold text-olive-700">{formatCurrency(item.price)}</p>
+            </div>
+            {item.description && <p className="mt-1 text-xs leading-relaxed text-olive-500">{item.description}</p>}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

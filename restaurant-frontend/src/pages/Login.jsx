@@ -7,6 +7,7 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [loginAs, setLoginAs] = useState('customer')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -18,10 +19,16 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const result = await login(email, password)
+    const result = await login(email, password, loginAs)
     setLoading(false)
     if (result.success) {
-      navigate(result.user.role === 'admin' ? '/admin' : redirectTo, { replace: true })
+      if (result.user.role === 'admin') {
+        navigate('/admin', { replace: true })
+      } else if (result.user.role === 'restaurant') {
+        navigate('/manager', { replace: true })
+      } else {
+        navigate(redirectTo, { replace: true })
+      }
     } else {
       setError(result.message)
     }
@@ -39,6 +46,28 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-olive-100">
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-olive-600">Sign In As</label>
+          <div className="flex rounded-full bg-olive-50 p-1">
+            {[
+              { key: 'customer', label: 'Customer' },
+              { key: 'restaurant', label: 'Restaurant' },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setLoginAs(opt.key)}
+                className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                  loginAs === opt.key ? 'bg-olive-800 text-white' : 'text-olive-700'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <label className="mb-1 block text-xs font-medium text-olive-600">Email</label>
           <input

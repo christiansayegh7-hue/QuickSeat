@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Clock } from 'lucide-react'
 import { averageRating, restaurantCoverUrl } from '../../utils/format'
 import StarRating from './StarRating'
 
@@ -30,6 +31,11 @@ export default function RestaurantCard({ restaurant }) {
           {restaurant.address ? ` • ${restaurant.address.split(',')[0]}` : ''}
         </p>
         <StarRating rating={rating || 0} />
+        {restaurant.opening_hours && (
+          <p className="flex items-center gap-1 text-xs text-olive-500">
+            <Clock size={12} /> {restaurant.opening_hours}
+          </p>
+        )}
       </div>
     </Link>
   )

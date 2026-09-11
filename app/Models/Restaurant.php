@@ -17,7 +17,10 @@ class Restaurant extends Model
         'email',
         'restaurant_type',
         'price_range',
+        'max_capacity',
         'opening_hours',
+        'opening_time',
+        'closing_time',
         'description',
         'cover_image',
     ];

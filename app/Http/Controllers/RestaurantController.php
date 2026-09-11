@@ -72,6 +72,9 @@ class RestaurantController extends Controller
             'restaurant_type' => 'nullable|string|max:100',
             'price_range' => 'nullable|string|max:10',
             'opening_hours' => 'nullable|string|max:100',
+            'opening_time' => 'sometimes|date_format:H:i',
+            'closing_time' => 'sometimes|date_format:H:i',
+            'max_capacity' => 'sometimes|integer|min:1',
             'description' => 'nullable|string',
             'image' => 'nullable|image|max:5120',
         ]);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import api, { apiErrorMessage } from '../../lib/api'
-import { formatDate, formatTime, statusStyles } from '../../utils/format'
+import { formatCurrency, formatDate, formatTime, statusStyles } from '../../utils/format'
 
 const STATUS_FILTERS = ['All', 'confirmed', 'pending', 'cancelled', 'no_show']
 
@@ -88,15 +88,16 @@ export default function AdminReservations() {
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Time</th>
               <th className="px-4 py-3">Guests</th>
+              <th className="px-4 py-3">Order</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-olive-50">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-olive-400">Loading...</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-olive-400">Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-olive-400">No reservations found.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-olive-400">No reservations found.</td></tr>
             ) : (
               filtered.map((r) => {
                 const status = statusStyles(r.status)
@@ -108,6 +109,19 @@ export default function AdminReservations() {
                     <td className="px-4 py-3 text-olive-700">{formatDate(r.reservation_date)}</td>
                     <td className="px-4 py-3 text-olive-700">{formatTime(r.start_time)}</td>
                     <td className="px-4 py-3 text-olive-700">{r.number_of_guests}</td>
+                    <td className="px-4 py-3 text-olive-700">
+                      {r.items?.length > 0 ? (
+                        <span
+                          title={r.items.map((row) => `${row.quantity} × ${row.menu_item?.name}`).join('\n')}
+                          className="cursor-help underline decoration-dotted underline-offset-2"
+                        >
+                          {r.items.reduce((n, row) => n + row.quantity, 0)} item(s) ·{' '}
+                          {formatCurrency(r.items.reduce((sum, row) => sum + Number(row.subtotal), 0))}
+                        </span>
+                      ) : (
+                        <span className="text-olive-300">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${status.className}`}>{status.label}</span>
                     </td>

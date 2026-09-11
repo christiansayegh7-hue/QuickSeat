@@ -26,9 +26,9 @@ export function AuthProvider({ children }) {
     setUser(data.user)
   }
 
-  async function login(email, password) {
+  async function login(email, password, loginAs = 'customer') {
     try {
-      const { data } = await api.post('/login', { email, password })
+      const { data } = await api.post('/login', { email, password, login_as: loginAs })
       persistSession(data)
       return { success: true, user: data.user }
     } catch (error) {
@@ -36,13 +36,43 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function register(name, email, password) {
+  async function sendEmailOtp(email) {
     try {
-      const { data } = await api.post('/register', { name, email, password })
-      persistSession(data)
-      return { success: true, user: data.user }
+      const { data } = await api.post('/email/otp/send', { email })
+      return { success: true, message: data.message }
     } catch (error) {
-      return { success: false, message: apiErrorMessage(error, 'Could not create your account.') }
+      return { success: false, message: apiErrorMessage(error, 'Could not send the verification code.') }
+    }
+  }
+
+  async function verifyEmailOtp(email, code) {
+    try {
+      const { data } = await api.post('/email/otp/verify', { email, code })
+      return { success: true, message: data.message }
+    } catch (error) {
+      return { success: false, message: apiErrorMessage(error, 'Could not verify the code.') }
+    }
+  }
+
+  async function register(payload) {
+    try {
+      const { data } = await api.post('/register', payload)
+      persistSession(data)
+      return { success: true, user: data.user, message: data.message, pending: payload.account_type === 'restaurant' }
+    } catch (error) {
+      return { success: false, message: apiErrorMessage(error, 'Could not create your account.'), errors: error?.response?.data?.errors }
+    }
+  }
+
+  async function changePassword(currentPassword, newPassword) {
+    try {
+      const { data } = await api.patch('/profile/password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      return { success: true, message: data.message }
+    } catch (error) {
+      return { success: false, message: apiErrorMessage(error, 'Could not change your password.') }
     }
   }
 
@@ -62,8 +92,12 @@ export function AuthProvider({ children }) {
     loading,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
+    isManager: user?.role === 'restaurant',
     login,
     register,
+    sendEmailOtp,
+    verifyEmailOtp,
+    changePassword,
     logout,
   }
 

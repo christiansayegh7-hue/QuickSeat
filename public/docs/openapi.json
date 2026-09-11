@@ -1,0 +1,954 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "QuickSeat API",
+    "description": "REST API for the QuickSeat restaurant reservation platform (Laravel + Sanctum). Every private endpoint is authenticated with a Sanctum Bearer token obtained from /login or /register. Roles: customer, restaurant (manager), admin. Registration requires a verified email via the /email/otp endpoints. In local development MAIL_MAILER=log, so the code is written to storage/logs/laravel.log instead of a real inbox.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://127.0.0.1:8000/api", "description": "Local development" }
+  ],
+  "tags": [
+    { "name": "Authentication" },
+    { "name": "Restaurants" },
+    { "name": "Manager" },
+    { "name": "Tables" },
+    { "name": "Menu" },
+    { "name": "Reservations" },
+    { "name": "Reservation Items (Orders)" },
+    { "name": "Reviews" },
+    { "name": "Notifications" },
+    { "name": "Admin - Users" },
+    { "name": "Admin - Restaurant Applications" },
+    { "name": "Admin - Reports" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sanctumToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum personal access token",
+        "description": "Send as `Authorization: Bearer <token>`. The token is returned by /login or /register."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "The given data was invalid." },
+          "errors": {
+            "type": "object",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "role": { "type": "string", "enum": ["customer", "restaurant", "admin"] },
+          "is_blocked": { "type": "boolean" },
+          "managed_restaurants": {
+            "type": "array",
+            "description": "Only populated on the login/register response. Empty unless role is restaurant.",
+            "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } }
+          },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Restaurant": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "manager_id": { "type": "integer", "nullable": true },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "phone": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "restaurant_type": { "type": "string", "nullable": true },
+          "price_range": { "type": "string", "nullable": true },
+          "opening_hours": { "type": "string", "nullable": true, "description": "Free-text display string, e.g. \"9am - 11pm\"." },
+          "opening_time": { "type": "string", "nullable": true, "example": "09:00", "description": "H:i, used for real availability math." },
+          "closing_time": { "type": "string", "nullable": true, "example": "23:00" },
+          "max_capacity": { "type": "integer", "nullable": true, "description": "Max guests allowed per single reservation." },
+          "description": { "type": "string", "nullable": true },
+          "cover_image": { "type": "string", "nullable": true, "description": "Storage path; not directly usable as a URL." },
+          "cover_image_url": { "type": "string", "nullable": true, "description": "Public URL to the cover image, if uploaded." },
+          "is_full": { "type": "boolean", "description": "Computed live: true when every available table is currently occupied." },
+          "available_tables_now": { "type": "integer", "description": "Computed live." },
+          "tables": { "type": "array", "items": { "$ref": "#/components/schemas/Table" } },
+          "categories": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } },
+          "reviews": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } }
+        }
+      },
+      "Table": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "restaurant_id": { "type": "integer" },
+          "table_number": { "type": "integer" },
+          "capacity": { "type": "integer" },
+          "location": { "type": "string", "nullable": true, "example": "Near the window", "description": "Short description of where the table sits, shown to customers while booking." },
+          "status": { "type": "string", "enum": ["available", "unavailable"] }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "restaurant_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "is_active": { "type": "boolean" },
+          "menu_items": { "type": "array", "items": { "$ref": "#/components/schemas/MenuItem" } }
+        }
+      },
+      "MenuItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "category_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "price": { "type": "string", "example": "12.00" },
+          "image": { "type": "string", "nullable": true },
+          "image_url": { "type": "string", "nullable": true },
+          "is_available": { "type": "boolean" }
+        }
+      },
+      "Reservation": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "restaurant_id": { "type": "integer" },
+          "table_id": { "type": "integer" },
+          "reservation_date": { "type": "string", "format": "date" },
+          "start_time": { "type": "string", "example": "19:00" },
+          "end_time": { "type": "string", "example": "21:00" },
+          "number_of_guests": { "type": "integer" },
+          "reservation_method": { "type": "string", "nullable": true },
+          "notes": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "no_show"] },
+          "created_by_user_id": { "type": "integer", "nullable": true },
+          "reservation_code": { "type": "string", "example": "RES-AB12CD34EF", "description": "Unique display/reference code shown to the customer. Not used as a lookup key by any endpoint today - all lookups are by numeric id." },
+          "table": { "$ref": "#/components/schemas/Table" },
+          "restaurant": { "$ref": "#/components/schemas/Restaurant" },
+          "user": { "$ref": "#/components/schemas/User" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/ReservationItem" } }
+        }
+      },
+      "ReservationItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "reservation_id": { "type": "integer" },
+          "menu_item_id": { "type": "integer" },
+          "quantity": { "type": "integer" },
+          "unit_price": { "type": "string", "example": "12.00" },
+          "subtotal": { "type": "string", "example": "24.00" },
+          "menu_item": { "$ref": "#/components/schemas/MenuItem" }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "restaurant_id": { "type": "integer" },
+          "rating_food": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "rating_service": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "rating_cleanliness": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "comment": { "type": "string", "nullable": true },
+          "user": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "reservation_id": { "type": "integer", "nullable": true },
+          "message": { "type": "string" },
+          "type": { "type": "string", "example": "reservation_confirmed" },
+          "is_read": { "type": "boolean" }
+        }
+      },
+      "RestaurantApplication": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "restaurant_name": { "type": "string" },
+          "phone": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+          "reviewed_by": { "type": "integer", "nullable": true },
+          "reviewed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "user": { "$ref": "#/components/schemas/User" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/email/otp/send": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Send a 6-digit email verification code (registration)",
+        "description": "Step 1 of registration. Rate-limited to 3 requests/minute per IP. Rejects an email that already belongs to a registered user. The code expires after 10 minutes; requesting a new one invalidates any previous unconsumed code for that email.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email"], "properties": { "email": { "type": "string", "format": "email" } } } } }
+        },
+        "responses": {
+          "200": { "description": "A verification code has been sent to your email." },
+          "409": { "description": "This email is already registered. Please log in instead.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "422": { "description": "Validation error (invalid email format)." },
+          "429": { "description": "Too many requests - rate limit exceeded (3/minute)." }
+        }
+      }
+    },
+    "/email/otp/verify": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Verify the 6-digit email code (registration)",
+        "description": "Step 2 of registration. On success the code is marked consumed and cannot be reused. /register then checks server-side that this email was verified within the last 15 minutes - the code itself does not need to be sent again with the registration form. Max 5 incorrect attempts per code before a new one must be requested. Rate-limited to 10 requests/minute per IP.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email", "code"], "properties": {
+            "email": { "type": "string", "format": "email" },
+            "code": { "type": "string", "example": "123456", "minLength": 6, "maxLength": 6 }
+          } } } }
+        },
+        "responses": {
+          "200": { "description": "Email verified successfully." },
+          "422": { "description": "No active code for this email, code expired, code incorrect, or too many attempts.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "429": { "description": "Too many requests - rate limit exceeded (10/minute)." }
+        }
+      }
+    },
+    "/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new account",
+        "description": "Creates a customer account, or (when account_type=restaurant) a customer account plus a pending RestaurantApplication for admin review - the role stays 'customer' until an admin approves it. Requires the email to have been verified via /email/otp/send + /email/otp/verify within the last 15 minutes, otherwise 422.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string", "maxLength": 255 },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "description": "Min 8 chars, upper+lower case, a number and a symbol." },
+                  "account_type": { "type": "string", "enum": ["customer", "restaurant"], "default": "customer" },
+                  "restaurant_name": { "type": "string", "description": "Required when account_type=restaurant." },
+                  "phone": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registered successfully (customer, or customer + pending restaurant application).",
+            "content": { "application/json": { "schema": { "type": "object", "properties": {
+              "message": { "type": "string" },
+              "user": { "$ref": "#/components/schemas/User" },
+              "token": { "type": "string" },
+              "restaurant_application": { "$ref": "#/components/schemas/RestaurantApplication" }
+            } } } }
+          },
+          "422": { "description": "Validation error (e.g. email already taken, weak password), or the email was not verified via /email/otp within the last 15 minutes.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" } } } }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Log in and obtain a Bearer token",
+        "description": "login_as=restaurant additionally requires the account to actually hold the restaurant role (verified server-side from the stored role, not the request).",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": {
+            "email": { "type": "string", "format": "email" },
+            "password": { "type": "string" },
+            "login_as": { "type": "string", "enum": ["customer", "restaurant"], "default": "customer" }
+          } } } }
+        },
+        "responses": {
+          "200": { "description": "Login successful.", "content": { "application/json": { "schema": { "type": "object", "properties": {
+            "message": { "type": "string" }, "user": { "$ref": "#/components/schemas/User" }, "token": { "type": "string" }
+          } } } } },
+          "401": { "description": "Invalid email or password.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "login_as=restaurant but the account has no restaurant access, or its restaurant application is pending/rejected.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Log out (revoke the current token)",
+        "security": [{ "sanctumToken": [] }],
+        "responses": {
+          "200": { "description": "Logout successful.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthenticated." }
+        }
+      }
+    },
+    "/profile/password": {
+      "patch": {
+        "tags": ["Authentication"],
+        "summary": "Change the signed-in user's password",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["current_password", "new_password"], "properties": {
+            "current_password": { "type": "string" },
+            "new_password": { "type": "string", "description": "Same complexity rule as registration." }
+          } } } }
+        },
+        "responses": {
+          "200": { "description": "Password changed successfully." },
+          "401": { "description": "Unauthenticated." },
+          "422": { "description": "Current password incorrect, or new password fails validation / complexity rule.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" } } } }
+        }
+      }
+    },
+    "/restaurants": {
+      "get": {
+        "tags": ["Restaurants"],
+        "summary": "List all restaurants",
+        "description": "Public. Each restaurant includes live-computed is_full / available_tables_now, plus reviews and tables.",
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "restaurants": { "type": "array", "items": { "$ref": "#/components/schemas/Restaurant" } } } } } } } }
+      }
+    },
+    "/restaurants/{id}": {
+      "get": {
+        "tags": ["Restaurants"],
+        "summary": "Get one restaurant's details",
+        "description": "Public. Includes reviews.user, tables (with each table's location), and categories.menuItems (the full menu, including unavailable items).",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "restaurant": { "$ref": "#/components/schemas/Restaurant" } } } } } },
+          "404": { "description": "Restaurant not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/admin/restaurants/{id}": {
+      "post": {
+        "tags": ["Restaurants"],
+        "summary": "Update any restaurant's profile (admin only)",
+        "description": "POST (not PATCH) so a real multipart image upload works reliably.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" }, "address": { "type": "string" }, "phone": { "type": "string" },
+            "email": { "type": "string", "nullable": true }, "restaurant_type": { "type": "string", "nullable": true },
+            "price_range": { "type": "string", "nullable": true }, "opening_hours": { "type": "string", "nullable": true },
+            "opening_time": { "type": "string", "example": "09:00" }, "closing_time": { "type": "string", "example": "23:00" },
+            "max_capacity": { "type": "integer" }, "description": { "type": "string", "nullable": true },
+            "image": { "type": "string", "format": "binary", "description": "Max 5MB image. Replaces the existing cover image." }
+          }
+        } } } },
+        "responses": {
+          "200": { "description": "Restaurant updated successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "restaurant": { "$ref": "#/components/schemas/Restaurant" } } } } } },
+          "403": { "description": "Not an admin.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Restaurant not found." },
+          "422": { "description": "Validation error." }
+        }
+      }
+    },
+    "/manager/restaurant": {
+      "get": {
+        "tags": ["Manager"],
+        "summary": "Get my own restaurant",
+        "description": "The restaurant is resolved server-side from the token (the manager's managedRestaurants()) - never from a request parameter.",
+        "security": [{ "sanctumToken": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "restaurant": { "$ref": "#/components/schemas/Restaurant" } } } } } },
+          "403": { "description": "Not a restaurant-role account, or the account doesn't manage a restaurant yet.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "post": {
+        "tags": ["Manager"],
+        "summary": "Update my own restaurant's profile",
+        "description": "Same fields/validation as the admin update endpoint, but with no {id} - it can only ever target the caller's own restaurant.",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "$ref": "#/paths/~1admin~1restaurants~1{id}/post/requestBody/content/multipart~1form-data/schema" } } } },
+        "responses": {
+          "200": { "description": "Restaurant updated successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "restaurant": { "$ref": "#/components/schemas/Restaurant" } } } } } },
+          "403": { "description": "Not a restaurant-role account, or manages no restaurant.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "422": { "description": "Validation error." }
+        }
+      }
+    },
+    "/manager/reservations": {
+      "get": {
+        "tags": ["Manager"],
+        "summary": "List my restaurant's reservations",
+        "security": [{ "sanctumToken": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "restaurant_id": { "type": "integer" }, "reservations": { "type": "array", "items": { "$ref": "#/components/schemas/Reservation" } } } } } } },
+          "403": { "description": "Not a restaurant-role account, or manages no restaurant." }
+        }
+      }
+    },
+    "/tables": {
+      "post": {
+        "tags": ["Tables"],
+        "summary": "Create a table",
+        "description": "Admin must supply restaurant_id (any restaurant). A restaurant manager may not supply it - their own restaurant is inferred from the token.",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["table_number", "capacity"], "properties": {
+          "restaurant_id": { "type": "integer", "description": "Admin only. Required for admin, forbidden/ignored for a restaurant manager." },
+          "table_number": { "type": "integer", "minimum": 1, "description": "Must be unique within the restaurant." },
+          "capacity": { "type": "integer", "minimum": 1 },
+          "location": { "type": "string", "nullable": true, "example": "Near the window", "maxLength": 100 },
+          "status": { "type": "string", "enum": ["available", "unavailable"] }
+        } } } } },
+        "responses": {
+          "201": { "description": "Table created successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "table": { "$ref": "#/components/schemas/Table" } } } } } },
+          "403": { "description": "Not admin/restaurant, or manages no restaurant." },
+          "422": { "description": "Validation error, or a table with that number already exists for the restaurant." }
+        }
+      }
+    },
+    "/tables/{id}": {
+      "patch": {
+        "tags": ["Tables"],
+        "summary": "Update a table",
+        "description": "Admin may update any table; a restaurant manager only a table belonging to their own restaurant.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": {
+          "table_number": { "type": "integer" }, "capacity": { "type": "integer" },
+          "location": { "type": "string", "nullable": true }, "status": { "type": "string", "enum": ["available", "unavailable"] }
+        } } } } },
+        "responses": {
+          "200": { "description": "Table updated successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "table": { "$ref": "#/components/schemas/Table" } } } } } },
+          "403": { "description": "Does not manage this table's restaurant." },
+          "404": { "description": "Table not found." },
+          "422": { "description": "Validation error / duplicate table_number." }
+        }
+      },
+      "delete": {
+        "tags": ["Tables"],
+        "summary": "Delete a table",
+        "description": "Rejected with 409 if the table has any pending/confirmed reservation - table_id cascades onto reservations at the DB level, so this guard prevents silently deleting a customer's booking.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Table deleted successfully." },
+          "403": { "description": "Does not manage this table's restaurant." },
+          "404": { "description": "Table not found." },
+          "409": { "description": "This table has active (pending/confirmed) reservations and cannot be deleted." }
+        }
+      }
+    },
+    "/restaurants/{restaurantId}/menu": {
+      "get": {
+        "tags": ["Menu"],
+        "summary": "Get a restaurant's public menu",
+        "description": "Public. Only categories/items currently is_available=true are returned.",
+        "parameters": [ { "name": "restaurantId", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "restaurant_id": { "type": "integer" }, "categories": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } } } } } } } }
+      }
+    },
+    "/categories": {
+      "post": {
+        "tags": ["Menu"],
+        "summary": "Create a menu category",
+        "description": "Same admin-vs-manager pattern as /tables: admin supplies restaurant_id, a manager's restaurant is inferred.",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": {
+          "restaurant_id": { "type": "integer", "description": "Admin only." },
+          "name": { "type": "string", "maxLength": 255 }, "description": { "type": "string", "nullable": true }, "is_active": { "type": "boolean", "default": true }
+        } } } } },
+        "responses": {
+          "201": { "description": "Category created successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "category": { "$ref": "#/components/schemas/Category" } } } } } },
+          "403": { "description": "Not admin/restaurant, or manages no restaurant." },
+          "422": { "description": "Validation error." }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "patch": {
+        "tags": ["Menu"],
+        "summary": "Update a menu category",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "description": { "type": "string", "nullable": true }, "is_active": { "type": "boolean" } } } } } },
+        "responses": {
+          "200": { "description": "Category updated successfully." },
+          "403": { "description": "Does not manage this category's restaurant." },
+          "404": { "description": "Category not found." },
+          "422": { "description": "Validation error." }
+        }
+      },
+      "delete": {
+        "tags": ["Menu"],
+        "summary": "Delete a menu category",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Category deleted successfully." },
+          "403": { "description": "Does not manage this category's restaurant." },
+          "404": { "description": "Category not found." }
+        }
+      }
+    },
+    "/menu-items": {
+      "post": {
+        "tags": ["Menu"],
+        "summary": "Create a menu item",
+        "description": "Ownership is verified from the target category's restaurant_id, never trusted from the request body.",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "type": "object", "required": ["category_id", "name", "price"], "properties": {
+          "category_id": { "type": "integer" }, "name": { "type": "string" }, "description": { "type": "string", "nullable": true },
+          "price": { "type": "number", "minimum": 0 }, "image": { "type": "string", "format": "binary", "nullable": true, "description": "Max 5MB." },
+          "is_available": { "type": "boolean", "default": true }
+        } } } } },
+        "responses": {
+          "201": { "description": "Menu item created successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "menu_item": { "$ref": "#/components/schemas/MenuItem" } } } } } },
+          "403": { "description": "Does not manage that category's restaurant." },
+          "422": { "description": "Validation error." }
+        }
+      }
+    },
+    "/menu-items/{id}": {
+      "patch": {
+        "tags": ["Menu"],
+        "summary": "Update a menu item (JSON body)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": {
+          "category_id": { "type": "integer", "description": "Moving to another category is blocked unless the manager also owns that category's restaurant." },
+          "name": { "type": "string" }, "description": { "type": "string", "nullable": true }, "price": { "type": "number" }, "is_available": { "type": "boolean" }
+        } } } } },
+        "responses": {
+          "200": { "description": "Menu item updated successfully." },
+          "403": { "description": "Does not manage this menu item's restaurant (or the target category's restaurant)." },
+          "404": { "description": "Menu item not found." },
+          "422": { "description": "Validation error." }
+        }
+      },
+      "post": {
+        "tags": ["Menu"],
+        "summary": "Update a menu item (multipart, for image upload)",
+        "description": "Identical handler to the PATCH version, reachable via POST so a real multipart image upload works reliably.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": {
+          "category_id": { "type": "integer" }, "name": { "type": "string" }, "description": { "type": "string", "nullable": true },
+          "price": { "type": "number" }, "image": { "type": "string", "format": "binary" }, "is_available": { "type": "boolean" }
+        } } } } },
+        "responses": {
+          "200": { "description": "Menu item updated successfully." },
+          "403": { "description": "Does not manage this menu item's restaurant." },
+          "404": { "description": "Menu item not found." },
+          "422": { "description": "Validation error." }
+        }
+      },
+      "delete": {
+        "tags": ["Menu"],
+        "summary": "Delete a menu item",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Menu item deleted successfully." },
+          "403": { "description": "Does not manage this menu item's restaurant." },
+          "404": { "description": "Menu item not found." }
+        }
+      }
+    },
+    "/reservations": {
+      "post": {
+        "tags": ["Reservations"],
+        "summary": "Create a reservation",
+        "description": "The customer is always the authenticated user (never taken from the body). A restaurant-role account may only book at the restaurant it manages. Validates guest capacity, opening hours, table-belongs-to-restaurant, table capacity, and time-overlap availability before creating.",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["restaurant_id", "table_id", "reservation_date", "start_time", "end_time", "number_of_guests"], "properties": {
+          "restaurant_id": { "type": "integer" }, "table_id": { "type": "integer" },
+          "reservation_date": { "type": "string", "format": "date" },
+          "start_time": { "type": "string", "example": "19:00" }, "end_time": { "type": "string", "example": "21:00" },
+          "number_of_guests": { "type": "integer", "minimum": 1 },
+          "reservation_method": { "type": "string", "nullable": true, "default": "website" },
+          "notes": { "type": "string", "nullable": true },
+          "items": { "type": "array", "items": { "type": "object", "properties": { "menu_item_id": { "type": "integer" }, "quantity": { "type": "integer", "minimum": 1 } } } }
+        } } } } },
+        "responses": {
+          "201": { "description": "Reservation saved successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "reservation": { "$ref": "#/components/schemas/Reservation" } } } } } },
+          "403": { "description": "Account is blocked, or a restaurant account tried to book at a restaurant it doesn't manage.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "The selected table is not available during this time period." },
+          "422": { "description": "Guest count exceeds restaurant capacity, time outside opening hours, table doesn't belong to the restaurant, table too small, or an invalid/unavailable menu item.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" } } } }
+        }
+      },
+      "get": {
+        "tags": ["Reservations"],
+        "summary": "List all reservations (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "reservations": { "type": "array", "items": { "$ref": "#/components/schemas/Reservation" } } } } } } },
+          "403": { "description": "Not an admin." }
+        }
+      }
+    },
+    "/reservations/my": {
+      "get": {
+        "tags": ["Reservations"],
+        "summary": "List my own reservations",
+        "security": [{ "sanctumToken": [] }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "reservations": { "type": "array", "items": { "$ref": "#/components/schemas/Reservation" } } } } } } } }
+      }
+    },
+    "/reservations/{id}/cancel": {
+      "patch": {
+        "tags": ["Reservations"],
+        "summary": "Cancel a reservation",
+        "description": "Only the reservation's own customer or an admin may cancel it. Cannot cancel an already-cancelled reservation, or one that has already started.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Reservation cancelled successfully." },
+          "403": { "description": "Not the reservation's owner and not an admin." },
+          "404": { "description": "Reservation not found." },
+          "409": { "description": "Already cancelled, or already started." }
+        }
+      }
+    },
+    "/reservations/{id}/no-show": {
+      "patch": {
+        "tags": ["Reservations"],
+        "summary": "Mark a reservation as no-show (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Reservation marked as no-show successfully." },
+          "403": { "description": "Not an admin." },
+          "404": { "description": "Reservation not found." },
+          "409": { "description": "Already cancelled, or already marked no_show." }
+        }
+      }
+    },
+    "/reservations/{id}/items": {
+      "post": {
+        "tags": ["Reservation Items (Orders)"],
+        "summary": "Add dishes to an existing reservation (restaurant manager)",
+        "description": "Restaurant-manager-only in practice: ownership is checked inside the controller (same convention as /menu-items, /categories, /tables), not via route middleware. Adding a menu_item_id that's already on the reservation increases its quantity instead of creating a duplicate row.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Reservation id." } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["items"], "properties": {
+          "items": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["menu_item_id", "quantity"], "properties": {
+            "menu_item_id": { "type": "integer" }, "quantity": { "type": "integer", "minimum": 1 }
+          } } }
+        } } } } },
+        "responses": {
+          "200": { "description": "Dishes added to the reservation successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "reservation": { "$ref": "#/components/schemas/Reservation" } } } } } },
+          "403": { "description": "Caller is not a restaurant manager, or does not manage this reservation's restaurant.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Reservation not found." },
+          "409": { "description": "Cannot add dishes to a cancelled reservation." },
+          "422": { "description": "One or more menu items don't belong to (or aren't available in) this restaurant.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" } } } }
+        }
+      }
+    },
+    "/restaurants/{restaurantId}/reservations": {
+      "get": {
+        "tags": ["Reservations"],
+        "summary": "List a specific restaurant's reservations (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "restaurantId", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "OK" },
+          "403": { "description": "Not an admin." }
+        }
+      }
+    },
+    "/restaurants/{restaurantId}/available-tables": {
+      "get": {
+        "tags": ["Reservations"],
+        "summary": "Browse tables available for a given date/time/party size",
+        "description": "Public. An out-of-range request (too many guests, outside hours) returns an empty list rather than an error - this is a browsing endpoint, not a commit one.",
+        "parameters": [
+          { "name": "restaurantId", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "reservation_date", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "start_time", "in": "query", "required": true, "schema": { "type": "string", "example": "19:00" } },
+          { "name": "end_time", "in": "query", "required": true, "schema": { "type": "string", "example": "21:00" } },
+          { "name": "number_of_guests", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "available_tables_count": { "type": "integer" }, "available_tables": { "type": "array", "items": { "$ref": "#/components/schemas/Table" } } } } } } },
+          "404": { "description": "Restaurant not found." }
+        }
+      }
+    },
+    "/restaurants/{restaurantId}/available-start-times": {
+      "get": {
+        "tags": ["Reservations"],
+        "summary": "List start times that have at least one available table",
+        "description": "Public. Lets the frontend remove dead time options instead of the customer discovering a slot fails only after picking it.",
+        "parameters": [
+          { "name": "restaurantId", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "reservation_date", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "duration_minutes", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 30, "maximum": 1440 } },
+          { "name": "number_of_guests", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "start_times": { "type": "array", "items": { "type": "string" } } } } } } },
+          "404": { "description": "Restaurant not found." }
+        }
+      }
+    },
+    "/admin/restaurants/{restaurantId}/profits": {
+      "get": {
+        "tags": ["Admin - Reports"],
+        "summary": "Total profit for one restaurant over a date range (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [
+          { "name": "restaurantId", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "from", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "confirmed_reservations_count": { "type": "integer" }, "total_profit": { "type": "string", "example": "1234.50" } } } } } },
+          "403": { "description": "Not an admin." },
+          "422": { "description": "Validation error (missing/invalid from-to)." }
+        }
+      }
+    },
+    "/reviews": {
+      "post": {
+        "tags": ["Reviews"],
+        "summary": "Add a review for a restaurant",
+        "description": "A user may only review a given restaurant once.",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["restaurant_id", "rating_food", "rating_service", "rating_cleanliness"], "properties": {
+          "restaurant_id": { "type": "integer" },
+          "rating_food": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "rating_service": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "rating_cleanliness": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "comment": { "type": "string", "nullable": true }
+        } } } } },
+        "responses": {
+          "201": { "description": "Review added successfully.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "review": { "$ref": "#/components/schemas/Review" } } } } } },
+          "409": { "description": "You have already reviewed this restaurant." },
+          "422": { "description": "Validation error." }
+        }
+      }
+    },
+    "/restaurants/{restaurantId}/reviews": {
+      "get": {
+        "tags": ["Reviews"],
+        "summary": "List a restaurant's reviews",
+        "description": "Public.",
+        "parameters": [ { "name": "restaurantId", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "reviews_count": { "type": "integer" }, "reviews": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } } } } } } },
+          "404": { "description": "Restaurant not found." }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List my notifications",
+        "security": [{ "sanctumToken": [] }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "notifications_count": { "type": "integer" }, "unread_count": { "type": "integer" }, "notifications": { "type": "array", "items": { "$ref": "#/components/schemas/Notification" } } } } } } } }
+      },
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Create a notification for myself",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["message", "type"], "properties": {
+          "reservation_id": { "type": "integer", "nullable": true }, "message": { "type": "string" }, "type": { "type": "string", "maxLength": 50 }
+        } } } } },
+        "responses": {
+          "201": { "description": "Notification created successfully." },
+          "422": { "description": "Validation error." }
+        }
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get my unread notification count",
+        "description": "Cheap endpoint for polling, e.g. a navbar badge.",
+        "security": [{ "sanctumToken": [] }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "unread_count": { "type": "integer" } } } } } } }
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Mark one of my notifications as read",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Notification marked as read." },
+          "404": { "description": "Notification not found (or does not belong to you)." }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin - Users"],
+        "summary": "List all users (admin only)",
+        "description": "Each user includes reservations_count and managed_restaurants.",
+        "security": [{ "sanctumToken": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "users": { "type": "array", "items": { "$ref": "#/components/schemas/User" } } } } } } },
+          "403": { "description": "Not an admin." }
+        }
+      }
+    },
+    "/admin/users/{id}/block": {
+      "patch": {
+        "tags": ["Admin - Users"],
+        "summary": "Block a user (admin only)",
+        "description": "A blocked user cannot create new reservations. Admin accounts cannot be blocked.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "User blocked successfully." },
+          "403": { "description": "Not an admin, or target user is an admin." },
+          "404": { "description": "User not found." }
+        }
+      }
+    },
+    "/admin/users/{id}/unblock": {
+      "patch": {
+        "tags": ["Admin - Users"],
+        "summary": "Unblock a user (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "User unblocked successfully." },
+          "403": { "description": "Not an admin." },
+          "404": { "description": "User not found." }
+        }
+      }
+    },
+    "/admin/restaurant-applications": {
+      "get": {
+        "tags": ["Admin - Restaurant Applications"],
+        "summary": "List all restaurant applications (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "restaurant_applications": { "type": "array", "items": { "$ref": "#/components/schemas/RestaurantApplication" } } } } } } },
+          "403": { "description": "Not an admin." }
+        }
+      }
+    },
+    "/admin/restaurant-applications/{id}/approve": {
+      "patch": {
+        "tags": ["Admin - Restaurant Applications"],
+        "summary": "Approve a restaurant application (admin only)",
+        "description": "Sets the applicant's role to 'restaurant' and creates a real Restaurant record owned by them.",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Restaurant application approved successfully." },
+          "403": { "description": "Not an admin." },
+          "404": { "description": "Application not found." },
+          "409": { "description": "This application has already been reviewed." }
+        }
+      }
+    },
+    "/admin/restaurant-applications/{id}/reject": {
+      "patch": {
+        "tags": ["Admin - Restaurant Applications"],
+        "summary": "Reject a restaurant application (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Restaurant application rejected." },
+          "403": { "description": "Not an admin." },
+          "404": { "description": "Application not found." },
+          "409": { "description": "This application has already been reviewed." }
+        }
+      }
+    },
+    "/admin/reports/restaurant-activity": {
+      "get": {
+        "tags": ["Admin - Reports"],
+        "summary": "Reservation activity per restaurant (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "responses": { "200": { "description": "OK" }, "403": { "description": "Not an admin." } }
+      }
+    },
+    "/admin/reports/daily-customers": {
+      "get": {
+        "tags": ["Admin - Reports"],
+        "summary": "Distinct customers per restaurant per day (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [
+          { "name": "from", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "restaurant_id", "in": "query", "required": false, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "403": { "description": "Not an admin." }, "422": { "description": "Validation error." } }
+      }
+    },
+    "/admin/reports/daily-revenue": {
+      "get": {
+        "tags": ["Admin - Reports"],
+        "summary": "Revenue per restaurant per day (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [
+          { "name": "from", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "restaurant_id", "in": "query", "required": false, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "403": { "description": "Not an admin." }, "422": { "description": "Validation error." } }
+      }
+    },
+    "/admin/reports/top-customers": {
+      "get": {
+        "tags": ["Admin - Reports"],
+        "summary": "Top 10 customers by reservation count (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "responses": { "200": { "description": "OK" }, "403": { "description": "Not an admin." } }
+      }
+    },
+    "/admin/reports/top-menu-items": {
+      "get": {
+        "tags": ["Admin - Reports"],
+        "summary": "Top 10 menu items by quantity sold (admin only)",
+        "security": [{ "sanctumToken": [] }],
+        "parameters": [ { "name": "restaurant_id", "in": "query", "required": false, "schema": { "type": "integer" }, "description": "Scope to one restaurant; omit for platform-wide." } ],
+        "responses": { "200": { "description": "OK" }, "403": { "description": "Not an admin." } }
+      }
+    },
+    "/admin/reports/monthly/run": {
+      "post": {
+        "tags": ["Admin - Reports"],
+        "summary": "Manually trigger the monthly report job (admin only)",
+        "description": "Runs the same `reports:monthly` Artisan command the scheduler runs automatically, for testing/demo purposes.",
+        "security": [{ "sanctumToken": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "month": { "type": "integer", "minimum": 1, "maximum": 12 }, "year": { "type": "integer" } } } } } },
+        "responses": {
+          "200": { "description": "Monthly report run completed.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" }, "output": { "type": "string" } } } } } },
+          "403": { "description": "Not an admin." }
+        }
+      }
+    },
+    "/admin/test": {
+      "get": {
+        "tags": ["Admin - Users"],
+        "summary": "Simple admin-access check",
+        "security": [{ "sanctumToken": [] }],
+        "responses": { "200": { "description": "Admin access granted successfully." }, "403": { "description": "Not an admin." } }
+      }
+    }
+  }
+}

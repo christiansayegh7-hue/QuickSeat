@@ -25,3 +25,17 @@ export function RequireAdmin() {
   }
   return <Outlet />
 }
+
+export function RequireManager() {
+  const { isAuthenticated, isManager, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) return null
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+  if (!isManager) {
+    return <Navigate to="/" replace />
+  }
+  return <Outlet />
+}
