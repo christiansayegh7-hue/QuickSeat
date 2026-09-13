@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Minus, Plus, UtensilsCrossed, X } from 'lucide-react'
+import { Minus, Plus, UtensilsCrossed, X, XCircle } from 'lucide-react'
 import api, { apiErrorMessage } from '../../lib/api'
 import { formatCurrency, formatDate, formatTime, menuItemImageUrl, statusStyles } from '../../utils/format'
 
@@ -16,6 +16,7 @@ export default function ManagerReservations() {
   const [cart, setCart] = useState({})
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
+  const [cancellingId, setCancellingId] = useState(null)
 
   function fetchData() {
     return Promise.all([api.get('/manager/reservations'), api.get('/manager/restaurant')])
@@ -47,6 +48,21 @@ export default function ManagerReservations() {
   }
 
   const cartEntries = Object.entries(cart).filter(([, qty]) => qty > 0)
+
+  async function handleCancel(reservation) {
+    if (!confirm(`Cancel ${reservation.user?.name}'s reservation?`)) return
+
+    setCancellingId(reservation.id)
+    setError('')
+    try {
+      await api.patch(`/reservations/${reservation.id}/cancel`)
+      fetchData()
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Could not cancel this reservation.'))
+    } finally {
+      setCancellingId(null)
+    }
+  }
 
   async function handleAddDishes(e) {
     e.preventDefault()
@@ -141,12 +157,21 @@ export default function ManagerReservations() {
                     </td>
                     <td className="px-4 py-3">
                       {r.status !== 'cancelled' && (
-                        <button
-                          onClick={() => openAddDishes(r)}
-                          className="flex items-center gap-1 rounded-full border border-olive-200 px-3 py-1.5 text-xs font-semibold text-olive-800 hover:bg-olive-50"
-                        >
-                          <UtensilsCrossed size={13} /> Add Dishes
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => openAddDishes(r)}
+                            className="flex items-center gap-1 rounded-full border border-olive-200 px-3 py-1.5 text-xs font-semibold text-olive-800 hover:bg-olive-50"
+                          >
+                            <UtensilsCrossed size={13} /> Add Dishes
+                          </button>
+                          <button
+                            onClick={() => handleCancel(r)}
+                            disabled={cancellingId === r.id}
+                            className="flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            <XCircle size={13} /> {cancellingId === r.id ? 'Cancelling...' : 'Cancel'}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

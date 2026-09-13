@@ -401,11 +401,17 @@ class ReservationController extends Controller
             ], 404);
         }
 
-        // Only the reservation's own customer or an admin may cancel it -
-        // taken from the Sanctum-authenticated user, never a client-supplied id.
+        // The reservation's own customer, an admin, or the restaurant manager
+        // that owns this reservation's restaurant may cancel it - taken from
+        // the Sanctum-authenticated user, never a client-supplied id.
         $authUser = $request->user();
 
-        if ($reservation->user_id != $authUser->id && $authUser->role !== 'admin') {
+        $isOwnReservation = $reservation->user_id == $authUser->id;
+        $isAdmin = $authUser->role === 'admin';
+        $managesThisRestaurant = $authUser->role === 'restaurant'
+            && $authUser->managedRestaurants()->where('id', $reservation->restaurant_id)->exists();
+
+        if (!$isOwnReservation && !$isAdmin && !$managesThisRestaurant) {
             return response()->json([
                 'message' => 'You are not allowed to cancel this reservation.'
             ], 403);

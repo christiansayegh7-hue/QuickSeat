@@ -616,12 +616,12 @@
       "patch": {
         "tags": ["Reservations"],
         "summary": "Cancel a reservation",
-        "description": "Only the reservation's own customer or an admin may cancel it. Cannot cancel an already-cancelled reservation, or one that has already started.",
+        "description": "The reservation's own customer, an admin, or the restaurant manager that owns this reservation's restaurant may cancel it. Cannot cancel an already-cancelled reservation, or one that has already started.",
         "security": [{ "sanctumToken": [] }],
         "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
         "responses": {
           "200": { "description": "Reservation cancelled successfully." },
-          "403": { "description": "Not the reservation's owner and not an admin." },
+          "403": { "description": "Not the reservation's owner, not an admin, and not the manager of this reservation's restaurant." },
           "404": { "description": "Reservation not found." },
           "409": { "description": "Already cancelled, or already started." }
         }
