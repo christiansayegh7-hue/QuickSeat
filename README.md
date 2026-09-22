@@ -1,58 +1,78 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# QuickSeat
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+QuickSeat is a full-stack restaurant reservation platform. Customers browse restaurants, check table availability in real time, and book a table (optionally pre-ordering dishes). Restaurant owners manage their own restaurant, menu, tables and reservations. Admins oversee the whole platform.
 
-## About Laravel
+- **Backend**: Laravel 13 (PHP 8.3), Laravel Sanctum for token-based auth, SQLite
+- **Frontend**: React 19 + Vite + React Router + Tailwind CSS v4
+- **API docs**: OpenAPI/Swagger UI, served at `/documentation` once the backend is running
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Who uses it, and how
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Customers
+- Browse restaurants (cuisine, price range, opening hours, live "full/available" status).
+- Pick a date, time and party size, see which tables are actually free for that slot, and see each table's location (e.g. "Near the window", "Outdoor") before booking.
+- Optionally pre-order menu items with the reservation.
+- View their reservation history and cancel an upcoming reservation.
+- Leave a review (food/service/cleanliness) for a restaurant they've visited.
+- Get in-app notifications (reservation confirmations, etc.).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Restaurant managers
+- Apply for a restaurant account at registration (reviewed and approved by an admin).
+- Manage their own restaurant's profile: name, description, cover photo, capacity, opening hours.
+- Manage tables (add/edit/delete, set each table's capacity and location) and the menu (categories + dishes, with photos and availability toggle).
+- View all reservations made at their restaurant, add dishes to an existing reservation, and cancel a customer's reservation if needed.
 
-## Learning Laravel
+### Admins
+- Approve or reject restaurant applications.
+- Manage users (block/unblock accounts).
+- View platform-wide reports: restaurant activity, daily customers/revenue, top customers, top menu items.
+- Manage any restaurant, table, category or menu item directly.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Account security
+Registration requires verifying your email first: a 6-digit code is emailed to you, you confirm it, then the account is created. Passwords must be at least 8 characters with upper/lower case, a number and a symbol.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Running it locally
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### Requirements
+PHP 8.3+, Composer, Node.js 18+, npm.
 
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Backend (Laravel API)
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The API runs at `http://127.0.0.1:8000`. Swagger docs are at `http://127.0.0.1:8000/documentation`.
 
-## Contributing
+By default `.env` has `MAIL_MAILER=log`, so verification emails are written to `storage/logs/laravel.log` instead of actually being sent - open that file to read the OTP code while testing registration. To send real emails, set `MAIL_MAILER=smtp` with real SMTP credentials (e.g. a Gmail account + [App Password](https://myaccount.google.com/apppasswords)).
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2. Frontend (React)
 
-## Code of Conduct
+```bash
+cd restaurant-frontend
+npm install
+npm run dev
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+The site runs at `http://localhost:5173`.
 
-## Security Vulnerabilities
+### Demo accounts (after `php artisan migrate --seed`)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@gmail.com | P@ssword123 |
+| Restaurant manager (La Maison) | manager@gmail.com | P@ssword123 |
+| Customer | rawan@example.com | P@ssword123 |
+| Customer | omar@example.com | P@ssword123 |
 
-## License
+## Deploying
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- `Procfile` — for a buildpack-based host that natively detects PHP (e.g. Railway).
+- `Dockerfile` — for a Docker-based host (e.g. Render, Fly.io). Runs migrations and links storage on every boot.
+
+Either way, set the same environment variables shown in `.env.example`, generate a fresh `APP_KEY` (`php artisan key:generate --show`), and set `APP_DEBUG=false` for production.
